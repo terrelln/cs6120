@@ -7,5 +7,6 @@
   __var5: bool = not __var4;
   __var6: bool = not __var5;
   e: bool = not __var6;
+  print e;
   ret e;
 }

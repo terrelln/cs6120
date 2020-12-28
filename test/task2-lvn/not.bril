@@ -1,3 +1,4 @@
+# ARGS: true
 @main(a: bool): bool {
     b: bool = not a;
     c: bool = not b;
@@ -6,5 +7,6 @@
     e: bool = not e;
     e: bool = not e;
     e: bool = not e;
+    print e;
     ret e;
 }

@@ -3,5 +3,15 @@
   e: int = add a b;
   a: int = id e;
   b: int = id e;
+  h: int = add e e;
+  print a;
+  print b;
+  print e;
+  print e;
+  print e;
+  print h;
+  print h;
+  print h;
+  print e;
   print e;
 }

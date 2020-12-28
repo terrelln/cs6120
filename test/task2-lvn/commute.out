@@ -7,7 +7,7 @@
 .false:
   ret x;
 }
-@main(a: int, b: int): int {
+@main(a: int, b: int) {
 .__block0:
   __var0: int = const 0;
   c: int = add a b;
@@ -49,5 +49,5 @@
   w: bool = or m q;
   __var40: int = call @foo __var38 w;
   x: int = call @foo __var40 w;
-  ret x;
+  print x;
 }

@@ -1,4 +1,5 @@
 @main(a: int): int {
 .__block0:
+  print a;
   ret a;
 }

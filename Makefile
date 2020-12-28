@@ -12,3 +12,4 @@ test-task2: build
 	cargo build
 	turnt test/task2-dce/*.bril
 	turnt test/task2-lvn/*.bril
+	turnt --config brili.toml test/task2-lvn/*.bril

@@ -1,3 +1,4 @@
+# ARGS: 4 2
 @main(a: int, b: int) {
     c: int = id a;
     d: int = id b;
@@ -11,5 +12,14 @@
     j: int = add c d;
     k: int = id a;
     l: int = id b;
+    print c;
+    print d;
+    print e;
+    print f;
+    print g;
+    print h;
+    print i;
+    print j;
+    print k;
     print l;
 }

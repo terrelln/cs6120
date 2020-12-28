@@ -3,5 +3,6 @@
   b: int = const 1;
   print b;
   print b;
+  print b;
   ret b;
 }
