@@ -1,17 +1,19 @@
 @main(a: int, b: int) {
 .__block0:
-  e: int = add a b;
+  __var0: int = id a;
+  __var1: int = id b;
+  e: int = add __var0 __var1;
   a: int = id e;
   b: int = id e;
   h: int = add e e;
-  print a;
-  print b;
+  print __var0;
+  print __var1;
   print e;
   print e;
   print e;
   print h;
-  print h;
-  print h;
+  print e;
+  print e;
   print e;
   print e;
 }

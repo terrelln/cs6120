@@ -3,7 +3,8 @@
   br c .true .false;
 .true:
   y: int = const 1;
-  x: int = add x y;
+  __var1: int = id x;
+  x: int = add __var1 y;
 .false:
   ret x;
 }

@@ -23,6 +23,70 @@ fn unwrap_bool(lit: &bril::Literal) -> bool {
     }
 }
 
+// fn get_arg_type(
+//     program: &bril::Program,
+//     function: &bril::Function,
+//     instr: &bril::Instruction,
+//     arg: usize,
+// ) -> Option<bril::Type> {
+//     match instr {
+//         bril::Instruction::Constant { .. } => panic!("No arguments -> impossible!"),
+//         bril::Instruction::Value {
+//             op, op_type, funcs, ..
+//         } => {
+//             let value_type = match op {
+//                 bril::ValueOps::Add => bril::Type::Int,
+//                 bril::ValueOps::Sub => bril::Type::Int,
+//                 bril::ValueOps::Mul => bril::Type::Int,
+//                 bril::ValueOps::Div => bril::Type::Int,
+//                 bril::ValueOps::Eq => bril::Type::Int,
+//                 bril::ValueOps::Lt => bril::Type::Int,
+//                 bril::ValueOps::Gt => bril::Type::Int,
+//                 bril::ValueOps::Le => bril::Type::Int,
+//                 bril::ValueOps::Ge => bril::Type::Int,
+//                 bril::ValueOps::Not => bril::Type::Bool,
+//                 bril::ValueOps::And => bril::Type::Bool,
+//                 bril::ValueOps::Or => bril::Type::Bool,
+//                 bril::ValueOps::Call => {
+//                     assert_eq!(funcs.len(), 1);
+//                     let func = program
+//                         .functions
+//                         .iter()
+//                         .filter(|f| f.name == funcs[0])
+//                         .next()
+//                         .unwrap();
+//                     func.args[arg].arg_type.clone()
+//                 }
+//                 bril::ValueOps::Id => op_type.clone(),
+//             };
+//             Some(value_type)
+//         }
+//         bril::Instruction::Effect { op, funcs, .. } => {
+//             match op {
+//                 bril::EffectOps::Jump => None,
+//                 bril::EffectOps::Branch => Some(bril::Type::Bool),
+//                 bril::EffectOps::Call => {
+//                     assert_eq!(funcs.len(), 1);
+//                     let func = program
+//                         .functions
+//                         .iter()
+//                         .filter(|f| f.name == funcs[0])
+//                         .next()
+//                         .unwrap();
+//                     Some(func.args[arg].arg_type.clone())
+//                 }
+//                 bril::EffectOps::Return => function.return_type.clone(),
+//                 bril::EffectOps::Print =>
+//                 /* Unknown type */
+//                 {
+//                     None
+//                 }
+//                 bril::EffectOps::Nop => panic!("No args -> impossible!"),
+//             }
+//         }
+//     }
+// }
+
 fn evaluate(op: &bril::ValueOps, args: &Vec<bril::Literal>) -> bril::Literal {
     match op {
         bril::ValueOps::Add => bril::Literal::Int(unwrap_int(&args[0]) + unwrap_int(&args[1])),
@@ -71,14 +135,20 @@ pub struct LVN {
     value_table: HashMap<NumInstr, (String, usize)>,
     values: Vec<NumInstr>,
     num_writes: HashMap<String, usize>,
+    var_types: HashMap<String, bril::Type>,
+    instrs: Vec<bril::Instruction>,
+}
+
+fn get_type(instr: &bril::Instruction) -> Option<bril::Type> {
+    match instr {
+        bril::Instruction::Constant { const_type, .. } => Some(const_type.clone()),
+        bril::Instruction::Value { op_type, .. } => Some(op_type.clone()),
+        _ => None,
+    }
 }
 
 fn unwrap_type(instr: &bril::Instruction) -> bril::Type {
-    match instr {
-        bril::Instruction::Constant { const_type, .. } => const_type.clone(),
-        bril::Instruction::Value { op_type, .. } => op_type.clone(),
-        _ => panic!("Instruction has no type!"),
-    }
+    get_type(instr).unwrap()
 }
 
 fn unwrap_dest_mut(instr: &mut bril::Instruction) -> &mut String {
@@ -89,12 +159,16 @@ fn unwrap_dest_mut(instr: &mut bril::Instruction) -> &mut String {
     }
 }
 
-fn unwrap_dest(instr: &bril::Instruction) -> &String {
+fn get_dest(instr: &bril::Instruction) -> Option<&String> {
     match instr {
-        bril::Instruction::Constant { dest, .. } => dest,
-        bril::Instruction::Value { dest, .. } => dest,
-        _ => panic!("Instruction has no dest!"),
+        bril::Instruction::Constant { dest, .. } => Some(dest),
+        bril::Instruction::Value { dest, .. } => Some(dest),
+        _ => None,
     }
+}
+
+fn unwrap_dest(instr: &bril::Instruction) -> &String {
+    get_dest(instr).unwrap()
 }
 
 fn id(t: bril::Type, dest: String, arg: String) -> bril::Instruction {
@@ -115,6 +189,8 @@ impl LVN {
             value_table: HashMap::new(),
             values: Vec::new(),
             num_writes: HashMap::new(),
+            var_types: HashMap::new(),
+            instrs: Vec::new(),
         }
     }
 
@@ -123,6 +199,8 @@ impl LVN {
         self.value_table.clear();
         self.values.clear();
         self.num_writes.clear();
+        self.var_types.clear();
+        self.instrs.clear();
     }
 
     fn add_write(&mut self, var: &String) {
@@ -143,35 +221,24 @@ impl LVN {
         let count = self.num_writes.get_mut(var);
         match count {
             Some(count) => {
-                if *count > 0 {
-                    *count -= 1;
-                }
+                *count -= 1;
                 *count
-            },
-            None => 0
+            }
+            None => 0,
         }
     }
 
-    fn new_id_value(&mut self, var: &String) -> usize {
-        assert!(!self.var_to_num.contains_key(var));
-        let num = self.values.len();
-        self.var_to_num.insert(var.clone(), num);
-        let value = NumInstr {
-            op: Op::ValueOps(bril::ValueOps::Id),
-            args: vec![num],
-            value: None,
-        };
-        self.value_table.insert(value.clone(), (var.clone(), num));
-        self.values.push(value);
-        num
+    fn get_writes(&self, var: &String) -> usize {
+        *self.num_writes.get(var).unwrap_or(&0)
     }
 
     fn to_num(&mut self, var: &String) -> usize {
         match self.var_to_num.get(var) {
             Some(num) => *num,
-            None => self.new_id_value(var),
+            None => self.new_id_value(self.var_types[var].clone(), var),
         }
     }
+
     fn convert_args(&mut self, op: &bril::ValueOps, args: &Vec<String>) -> Vec<usize> {
         let mut args: Vec<usize> = args.iter().map(|var| self.to_num(var)).collect();
         if commutative(op) {
@@ -288,26 +355,30 @@ impl LVN {
 
     fn add_value(
         &mut self,
-        instrs: &mut Vec<bril::Instruction>,
         instr: bril::Instruction,
         num_instr: NumInstr,
         dest: String,
         num: usize,
         remaining_writes: usize,
+        push_instr: bool,
     ) {
         let dest = if remaining_writes == 0 {
-            instrs.push(instr);
+            if push_instr {
+                self.instrs.push(instr);
+            }
             dest
         } else {
             let mut instr = instr;
             let new_dest = format!("__var{}", num);
             let mut dest = new_dest.clone();
             let instr_dest = unwrap_dest_mut(&mut instr);
-            swap(&mut dest, instr_dest);
             // Run the old instruciton with the new dest
-            instrs.push(instr.clone());
+            if push_instr {
+                swap(&mut dest, instr_dest);
+                self.instrs.push(instr.clone());
+            }
             // Copy to old dest
-            instrs.push(id(
+            self.instrs.push(id(
                 unwrap_type(&instr),
                 dest.clone(),
                 unwrap_dest(&instr).clone(),
@@ -321,33 +392,80 @@ impl LVN {
         self.values.push(num_instr);
     }
 
-    fn process_instr(&mut self, instrs: &mut Vec<bril::Instruction>, instr: &bril::Instruction) {
+    fn new_id_value(&mut self, id_type: bril::Type, var: &String) -> usize {
+        assert!(!self.var_to_num.contains_key(var));
+        let num = self.values.len();
+        let instr = id(id_type, var.clone(), var.clone());
+        let value = NumInstr {
+            op: Op::ValueOps(bril::ValueOps::Id),
+            args: vec![num],
+            value: None,
+        };
+        // self.value_table.insert(value.clone(), (var.clone(), num));
+        // self.values.push(value);
+        let remaining_writes = self.get_writes(var);
+        self.add_value(instr, value, var.clone(), num, remaining_writes, false);
+        self.var_to_num.insert(var.clone(), num);
+        num
+    }
+
+    fn process_instr(&mut self, instr: &bril::Instruction) {
         let (instr, dest, mut num) = self.rewrite(instr.clone());
         let num_instr = self.convert(&instr).unwrap();
-        // let dest = unwrap_dest(instr);
-        let remaining_writes = self.sub_write(&dest);
+        let remaining_writes = if &dest == unwrap_dest(&instr) {
+            self.sub_write(&dest)
+        } else {
+            self.get_writes(&dest)
+        };
         match self.value_table.get(&num_instr) {
             Some((var, old_num)) => {
                 let var = var.clone();
                 num = *old_num;
-                instrs.push(self.rewrite(id(unwrap_type(&instr), unwrap_dest(&instr).clone(), var)).0);
+                let instr = self
+                    .rewrite(id(unwrap_type(&instr), unwrap_dest(&instr).clone(), var))
+                    .0;
+                self.instrs.push(instr);
             }
-            None => self.add_value(instrs, instr.clone(), num_instr, dest.clone(), num, remaining_writes),
+            None => self.add_value(
+                instr.clone(),
+                num_instr,
+                dest.clone(),
+                num,
+                remaining_writes,
+                true,
+            ),
         };
         self.var_to_num.insert(unwrap_dest(&instr).clone(), num);
     }
 
-    pub fn process(&mut self, block: &bb::BasicBlock) -> bb::BasicBlock {
-        self.clear();
-        self.count_writes(block);
-        let mut instrs = Vec::new();
-        for instr in &block.instrs {
-            if is_effect(instr) {
-                instrs.push(self.rewrite(instr.clone()).0);
-            } else {
-                self.process_instr(&mut instrs, instr);
+    fn assign_types(&mut self, func: &bril::Function) {
+        for bril::Argument { name, arg_type } in &func.args {
+            self.var_types.insert(name.clone(), arg_type.clone());
+        }
+        for instr in &func.instrs {
+            if let bril::Code::Instruction(instr) = instr {
+                if let Some(dest) = get_dest(&instr) {
+                    let dest_type = unwrap_type(&instr);
+                    self.var_types.insert(dest.clone(), dest_type);
+                }
             }
         }
+    }
+
+    pub fn process(&mut self, func: &bril::Function, block: &bb::BasicBlock) -> bb::BasicBlock {
+        self.clear();
+        self.count_writes(block);
+        self.assign_types(func);
+        for instr in &block.instrs {
+            if is_effect(instr) {
+                let instr = self.rewrite(instr.clone()).0;
+                self.instrs.push(instr);
+            } else {
+                self.process_instr(instr);
+            }
+        }
+        let mut instrs = Vec::new();
+        swap(&mut self.instrs, &mut instrs);
         bb::BasicBlock {
             label: block.label.clone(),
             instrs,
@@ -362,7 +480,7 @@ pub fn lvn(program: &bril::Program) -> bril::Program {
         let blocks = bb::BasicBlocks::from(&func.instrs);
         let mut lvn_blocks = Vec::new();
         for block in &blocks.blocks {
-            lvn_blocks.push(lvn.process(block));
+            lvn_blocks.push(lvn.process(func, block));
         }
         func.instrs = bb::to_instrs(lvn_blocks);
     }
