@@ -1,0 +1,5 @@
+@main {
+.__block0:
+  __var0: int = const 1;
+  print __var0;
+}

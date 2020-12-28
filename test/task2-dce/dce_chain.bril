@@ -1,0 +1,25 @@
+@main(a: int): int {
+    b: int = const 1;
+    c: int = add a b;
+    d: int = id a;
+    e: int = id c;
+    f: int = add d e;
+    g: bool = eq c f;
+    h: int = add e f;
+    h: int = id a;
+    br g .block1 .block2;
+.block1:
+    g1: int = id g;
+    g1: int = add g1 b;
+    g1: int = add g1 g1;
+    g1: int = id g1;
+    g1: int = id g1;
+    g1: int = id g1;
+    g1: int = id g1;
+    g1: int = id g;
+.block2:
+    g1: int = id g;
+    g1: int = add g1 g1;
+    g1: int = add g1 g1;
+    ret a;
+}

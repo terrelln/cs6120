@@ -1,0 +1,10 @@
+@main(a: bool): bool {
+    b: bool = not a;
+    c: bool = not b;
+    d: bool = not c;
+    e: bool = not d;
+    e: bool = not e;
+    e: bool = not e;
+    e: bool = not e;
+    ret e;
+}

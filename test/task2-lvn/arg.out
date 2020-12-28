@@ -1,0 +1,6 @@
+@main(a: int, b: int) {
+.__block0:
+  __var2: int = add a b;
+  f: int = add __var2 __var2;
+  print f;
+}

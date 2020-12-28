@@ -1,0 +1,72 @@
+@foo(x: int, c: bool): int {
+    br c .true .false;
+.true:
+    y: int = const 1;
+    x: int = add x y;
+.false:
+    ret x;
+}
+
+@main(a: int, b: int): int {
+    x: int = const 0;
+
+    c: int = add a b;
+    d: int = add b a;
+    x: int = add x c;
+    x: int = add x d;
+
+    e: int = mul a b;
+    x: int = add x e;
+    f: int = mul b a;
+    x: int = add x f;
+
+    g: int = sub a b;
+    x: int = add x g;
+    h: int = sub b a;
+    x: int = add x h;
+
+    i: int = div a b;
+    x: int = add x i;
+    j: int = div b a;
+    x: int = add x j;
+
+    k: bool = eq a b;
+    x: int = call @foo x k;
+    l: bool = eq b a;
+    x: int = call @foo x l;
+
+    m: bool = lt a b;
+    x: int = call @foo x m;
+    n: bool = lt b a;
+    x: int = call @foo x n;
+
+    o: bool = gt a b;
+    x: int = call @foo x o;
+    p: bool = gt b a;
+    x: int = call @foo x p;
+
+    q: bool = le a b;
+    x: int = call @foo x q;
+    r: bool = le b a;
+    x: int = call @foo x r;
+    
+    s: bool = ge a b;
+    x: int = call @foo x s;
+    t: bool = ge b a;
+    x: int = call @foo x t;
+
+    ab: bool = lt a b;
+    bb: bool = le a b;
+
+    u: bool = and ab bb;
+    x: int = call @foo x u;
+    v: bool = and bb ab;
+    x: int = call @foo x v;
+
+    w: bool = or ab bb;
+    x: int = call @foo x w;
+    y: bool = or bb ab;
+    x: int = call @foo x y;
+
+    ret x;
+}

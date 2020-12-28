@@ -1,0 +1,7 @@
+@main(a: int, b: int) {
+.__block0:
+  e: int = add a b;
+  a: int = id e;
+  b: int = id e;
+  print e;
+}

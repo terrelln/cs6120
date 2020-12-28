@@ -1,0 +1,15 @@
+@main(a: int, b: int) {
+    c: int = id a;
+    d: int = id b;
+    e: int = add a b;
+    f: int = add a b;
+    g: int = id e;
+    a: int = id e;
+    b: int = id f;
+    h: int = add a b;
+    i: int = add c d;
+    j: int = add c d;
+    k: int = id a;
+    l: int = id b;
+    print l;
+}

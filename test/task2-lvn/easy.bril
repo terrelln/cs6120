@@ -1,0 +1,8 @@
+@main(a: int): int {
+    b: int = const 1;
+    c: int = const 1;
+    d: int = const 1;
+    print b;
+    print c;
+    ret d;
+}

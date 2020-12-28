@@ -1,0 +1,53 @@
+@foo(x: int, c: bool): int {
+.__block0:
+  br c .true .false;
+.true:
+  y: int = const 1;
+  x: int = add x y;
+.false:
+  ret x;
+}
+@main(a: int, b: int): int {
+.__block0:
+  __var0: int = const 0;
+  c: int = add a b;
+  __var4: int = add __var0 c;
+  __var5: int = add __var4 c;
+  e: int = mul a b;
+  __var7: int = add __var5 e;
+  __var8: int = add __var7 e;
+  g: int = sub a b;
+  __var10: int = add __var8 g;
+  h: int = sub b a;
+  __var12: int = add __var10 h;
+  i: int = div a b;
+  __var14: int = add __var12 i;
+  j: int = div b a;
+  __var16: int = add __var14 j;
+  k: bool = eq a b;
+  __var18: int = call @foo __var16 k;
+  __var19: int = call @foo __var18 k;
+  m: bool = lt a b;
+  __var21: int = call @foo __var19 m;
+  n: bool = lt b a;
+  __var23: int = call @foo __var21 n;
+  o: bool = gt a b;
+  __var25: int = call @foo __var23 o;
+  p: bool = gt b a;
+  __var27: int = call @foo __var25 p;
+  q: bool = le a b;
+  __var29: int = call @foo __var27 q;
+  r: bool = le b a;
+  __var31: int = call @foo __var29 r;
+  s: bool = ge a b;
+  __var33: int = call @foo __var31 s;
+  t: bool = ge b a;
+  __var35: int = call @foo __var33 t;
+  u: bool = and m q;
+  __var37: int = call @foo __var35 u;
+  __var38: int = call @foo __var37 u;
+  w: bool = or m q;
+  __var40: int = call @foo __var38 w;
+  x: int = call @foo __var40 w;
+  ret x;
+}

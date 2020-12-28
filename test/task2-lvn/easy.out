@@ -1,0 +1,7 @@
+@main(a: int): int {
+.__block0:
+  b: int = const 1;
+  print b;
+  print b;
+  ret b;
+}

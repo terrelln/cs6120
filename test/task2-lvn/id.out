@@ -1,0 +1,4 @@
+@main(a: int): int {
+.__block0:
+  ret a;
+}

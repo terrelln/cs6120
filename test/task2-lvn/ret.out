@@ -1,0 +1,5 @@
+@main {
+.__block0:
+  prod: int = const 36;
+  print prod;
+}
