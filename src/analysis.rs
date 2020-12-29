@@ -1,7 +1,7 @@
 use super::bb;
 use super::bril;
 use super::data_flow::{data_flow, DataFlowAlgorithm, DataFlowDirection};
-use super::lvn::LVN;
+// use super::lvn::LVN;
 use super::util;
 use std::collections::{HashMap, HashSet};
 
@@ -70,11 +70,11 @@ pub fn reaching_defs(blocks: &bb::BasicBlocks) -> Vec<HashMap<String, HashSet<Lo
     data_flow(algo, blocks).0
 }
 
-struct ConstantPropagationAlgorithm<'a> {
-    function: &'a bril::Function,
+struct ConstantPropagationAlgorithm {
+    // function: &'a bril::Function,
 }
 
-impl DataFlowAlgorithm for ConstantPropagationAlgorithm<'_> {
+impl DataFlowAlgorithm for ConstantPropagationAlgorithm {
     type Result = Option<HashMap<String, bril::Literal>>;
 
     fn direction(&self) -> DataFlowDirection {
@@ -91,42 +91,64 @@ impl DataFlowAlgorithm for ConstantPropagationAlgorithm<'_> {
         block: &bb::BasicBlock,
         input: &Self::Result,
     ) -> Self::Result {
-        let input = input.clone().unwrap_or(HashMap::new());
-        // Only insert constants that were already present, not newly created variables
-        let vars: Vec<String> = block
-            .instrs
-            .iter()
-            .filter_map(|instr| util::get_dest(instr))
-            .chain(input.keys())
-            .cloned()
-            .collect();
-        let instrs: Vec<bril::Instruction> = input
-            .into_iter()
-            .map(|(var, lit)| util::constant(var, lit))
-            .chain(block.instrs.iter().cloned())
-            .collect();
-        let block = bb::BasicBlock {
-            label: block.label.clone(),
-            instrs,
-        };
-        let mut lvn = LVN::new();
-        let block = lvn.process(&self.function, &block);
-        let mut output = HashMap::new();
-        for instr in block.instrs {
-            match instr {
+        let mut constants = input.clone().unwrap_or(HashMap::new());
+        for instr in &block.instrs {
+            match instr.clone() {
                 bril::Instruction::Constant { dest, value, .. } => {
-                    if vars.contains(&dest) {
-                        output.insert(dest, value);
-                    }
+                    constants.insert(dest, value);
                 }
-                bril::Instruction::Value { dest, .. } => {
-                    // Non-constant kills the constant
-                    output.remove(&dest);
+                bril::Instruction::Value { dest, op, args, .. } => {
+                    let const_args: Vec<bril::Literal> = args
+                        .iter()
+                        .filter_map(|arg| constants.get(arg))
+                        .cloned()
+                        .collect();
+                    if op != bril::ValueOps::Call && const_args.len() == args.len() {
+                        constants.insert(dest, util::evaluate(&op, &const_args));
+                    } else {
+                        constants.remove(&dest);
+                    }
                 }
                 _ => {}
             }
         }
-        Some(output)
+        Some(constants)
+
+        // // Only insert constants that were already present, not newly created variables
+        // let vars: Vec<String> = block
+        //     .instrs
+        //     .iter()
+        //     .filter_map(|instr| util::get_dest(instr))
+        //     .chain(input.keys())
+        //     .cloned()
+        //     .collect();
+        // let instrs: Vec<bril::Instruction> = input
+        //     .into_iter()
+        //     .map(|(var, lit)| util::constant(var, lit))
+        //     .chain(block.instrs.iter().cloned())
+        //     .collect();
+        // let block = bb::BasicBlock {
+        //     label: block.label.clone(),
+        //     instrs,
+        // };
+        // let mut lvn = LVN::new();
+        // let block = lvn.process(&self.function, &block);
+        // let mut output = HashMap::new();
+        // for instr in block.instrs {
+        //     match instr {
+        //         bril::Instruction::Constant { dest, value, .. } => {
+        //             if vars.contains(&dest) {
+        //                 output.insert(dest, value);
+        //             }
+        //         }
+        //         bril::Instruction::Value { dest, .. } => {
+        //             // Non-constant kills the constant
+        //             output.remove(&dest);
+        //         }
+        //         _ => {}
+        //     }
+        // }
+        // Some(output)
     }
 
     fn merge<'a>(&self, input: impl Iterator<Item = &'a Self::Result>) -> Self::Result {
@@ -147,9 +169,12 @@ impl DataFlowAlgorithm for ConstantPropagationAlgorithm<'_> {
 
 pub fn constant_propagation(function: bril::Function) -> Vec<HashMap<String, bril::Literal>> {
     let algo = ConstantPropagationAlgorithm {
-        function: &function,
+        // function: &function,
     };
     let blocks = bb::BasicBlocks::from(&function.instrs);
     let const_prop = data_flow(algo, &blocks).0;
-    const_prop.into_iter().map(|x| x.unwrap_or(HashMap::new())).collect()
+    const_prop
+        .into_iter()
+        .map(|x| x.unwrap_or(HashMap::new()))
+        .collect()
 }
