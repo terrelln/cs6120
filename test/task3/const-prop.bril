@@ -1,0 +1,19 @@
+# ARGS: const_prop
+@main(cond: bool) {
+    a: int = const 1;
+    b: int = const 2;
+    c: int = const 3;
+    d: int = const 4;
+    br cond .true .false;
+.true:
+    b: int = const 2;
+    c: int = const 3;
+    d: int = const 5;
+.false:
+    b: int = const 2;
+.joined:
+    x: int = add a b;
+    x: int = add x c;
+    x: int = add x d;
+    print x;
+}

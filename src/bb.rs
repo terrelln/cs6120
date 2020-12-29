@@ -32,6 +32,8 @@ impl From<String> for BasicBlock {
 pub struct BasicBlocks {
     pub blocks: Vec<BasicBlock>,
     pub labels: HashMap<String, usize>,
+    pub pred: Vec<Vec<usize>>,
+    pub succ: Vec<Vec<usize>>,
 }
 
 impl BasicBlocks {
@@ -45,16 +47,23 @@ impl BasicBlocks {
     }
 }
 
-pub fn is_jump(instr: &bril::Instruction) -> bool {
+pub fn get_labels(instr: &bril::Instruction) -> Option<&Vec<String>> {
     match instr {
-        bril::Instruction::Effect { op, .. } => match op {
-            bril::EffectOps::Jump => true,
-            bril::EffectOps::Branch => true,
-            bril::EffectOps::Return => true,
-            _ => false,
+        bril::Instruction::Effect { op, labels, .. } => match op {
+            bril::EffectOps::Jump => Some(labels),
+            bril::EffectOps::Branch => Some(labels),
+            bril::EffectOps::Return => Some(labels),
+            _ => {
+                assert_eq!(labels.len(), 0);
+                None
+            },
         },
-        _ => false,
+        _ => None,
     }
+}
+
+pub fn is_jump(instr: &bril::Instruction) -> bool {
+    get_labels(instr).is_some()
 }
 
 impl BasicBlocks {
@@ -62,6 +71,8 @@ impl BasicBlocks {
         let mut blocks = BasicBlocks {
             blocks: Vec::new(),
             labels: HashMap::new(),
+            pred: Vec::new(),
+            succ: Vec::new(),
         };
         let mut block = BasicBlock::new();
         for instr in instrs {
@@ -91,7 +102,33 @@ impl BasicBlocks {
         if !block.is_empty() {
             blocks.add(block);
         }
+        blocks.compute_successors();
         blocks
+    }
+
+    fn compute_successors(&mut self) {
+        for _ in 0usize..self.blocks.len() {
+            self.pred.push(Vec::new());
+        }
+        for (idx, block) in self.blocks.iter().enumerate() {
+            let mut succ = Vec::new();
+            for instr in &block.instrs {
+                if let Some(labels) = get_labels(instr) {
+                    succ.extend(labels.iter().map(|label| self.labels[label]));
+                }
+            }
+            let fallthrough = match block.instrs.last() {
+                None => true,
+                Some(instr) => !is_jump(instr)
+            };
+            if fallthrough && idx + 1 < self.blocks.len() {
+                succ.push(idx + 1);
+            }
+            for s in &succ {
+                self.pred[*s].push(idx);
+            }
+            self.succ.push(succ);
+        }
     }
 
     pub fn from_blocks(blocks: Vec<BasicBlock>) -> BasicBlocks {
@@ -99,7 +136,14 @@ impl BasicBlocks {
         for (idx, block) in blocks.iter().enumerate() {
             labels.insert(block.label.clone(), idx);
         }
-        return BasicBlocks { labels, blocks };
+        let mut blocks = BasicBlocks {
+            labels,
+            blocks,
+            pred: Vec::new(),
+            succ: Vec::new(),
+        };
+        blocks.compute_successors();
+        blocks
     }
 
     pub fn to_instrs(self) -> Vec<bril::Code> {

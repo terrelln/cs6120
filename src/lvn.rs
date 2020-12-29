@@ -1,27 +1,7 @@
 use super::{bb, bril};
+use super::util::{is_effect, evaluate, commutative, unwrap_type, unwrap_dest_mut, get_dest, unwrap_dest, id};
 use std::collections::HashMap;
 use std::mem::swap;
-
-fn is_effect(instr: &bril::Instruction) -> bool {
-    match instr {
-        bril::Instruction::Effect { .. } => true,
-        _ => false,
-    }
-}
-
-fn unwrap_int(lit: &bril::Literal) -> i64 {
-    match lit {
-        bril::Literal::Int(x) => *x,
-        _ => panic!("Not an int!"),
-    }
-}
-
-fn unwrap_bool(lit: &bril::Literal) -> bool {
-    match lit {
-        bril::Literal::Bool(x) => *x,
-        _ => panic!("Not an int!"),
-    }
-}
 
 // fn get_arg_type(
 //     program: &bril::Program,
@@ -87,36 +67,6 @@ fn unwrap_bool(lit: &bril::Literal) -> bool {
 //     }
 // }
 
-fn evaluate(op: &bril::ValueOps, args: &Vec<bril::Literal>) -> bril::Literal {
-    match op {
-        bril::ValueOps::Add => bril::Literal::Int(unwrap_int(&args[0]) + unwrap_int(&args[1])),
-        bril::ValueOps::Sub => bril::Literal::Int(unwrap_int(&args[0]) - unwrap_int(&args[1])),
-        bril::ValueOps::Mul => bril::Literal::Int(unwrap_int(&args[0]) * unwrap_int(&args[1])),
-        bril::ValueOps::Div => bril::Literal::Int(unwrap_int(&args[0]) / unwrap_int(&args[1])),
-        bril::ValueOps::Eq => bril::Literal::Bool(unwrap_int(&args[0]) == unwrap_int(&args[1])),
-        bril::ValueOps::Lt => bril::Literal::Bool(unwrap_int(&args[0]) < unwrap_int(&args[1])),
-        bril::ValueOps::Gt => bril::Literal::Bool(unwrap_int(&args[0]) > unwrap_int(&args[1])),
-        bril::ValueOps::Le => bril::Literal::Bool(unwrap_int(&args[0]) <= unwrap_int(&args[1])),
-        bril::ValueOps::Ge => bril::Literal::Bool(unwrap_int(&args[0]) >= unwrap_int(&args[1])),
-        bril::ValueOps::Not => bril::Literal::Bool(!unwrap_bool(&args[0])),
-        bril::ValueOps::And => bril::Literal::Bool(unwrap_bool(&args[0]) && unwrap_bool(&args[1])),
-        bril::ValueOps::Or => bril::Literal::Bool(unwrap_bool(&args[0]) || unwrap_bool(&args[1])),
-        bril::ValueOps::Call => panic!("Unsupported!"),
-        bril::ValueOps::Id => args[0].clone(),
-    }
-}
-
-fn commutative(op: &bril::ValueOps) -> bool {
-    match op {
-        bril::ValueOps::Add => true,
-        bril::ValueOps::Mul => true,
-        bril::ValueOps::Eq => true,
-        bril::ValueOps::And => true,
-        bril::ValueOps::Or => true,
-        _ => false,
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum Op {
     ConstantOps(bril::ConstOps),
@@ -139,48 +89,6 @@ pub struct LVN {
     instrs: Vec<bril::Instruction>,
 }
 
-fn get_type(instr: &bril::Instruction) -> Option<bril::Type> {
-    match instr {
-        bril::Instruction::Constant { const_type, .. } => Some(const_type.clone()),
-        bril::Instruction::Value { op_type, .. } => Some(op_type.clone()),
-        _ => None,
-    }
-}
-
-fn unwrap_type(instr: &bril::Instruction) -> bril::Type {
-    get_type(instr).unwrap()
-}
-
-fn unwrap_dest_mut(instr: &mut bril::Instruction) -> &mut String {
-    match instr {
-        bril::Instruction::Constant { dest, .. } => dest,
-        bril::Instruction::Value { dest, .. } => dest,
-        _ => panic!("Instruction has no dest!"),
-    }
-}
-
-fn get_dest(instr: &bril::Instruction) -> Option<&String> {
-    match instr {
-        bril::Instruction::Constant { dest, .. } => Some(dest),
-        bril::Instruction::Value { dest, .. } => Some(dest),
-        _ => None,
-    }
-}
-
-fn unwrap_dest(instr: &bril::Instruction) -> &String {
-    get_dest(instr).unwrap()
-}
-
-fn id(t: bril::Type, dest: String, arg: String) -> bril::Instruction {
-    bril::Instruction::Value {
-        op: bril::ValueOps::Id,
-        op_type: t,
-        dest: dest,
-        args: vec![arg],
-        funcs: Vec::new(),
-        labels: Vec::new(),
-    }
-}
 
 impl LVN {
     pub fn new() -> Self {
