@@ -1,0 +1,21 @@
+# ARGS: const_prop
+@summation(n: int): int {
+    one: int = const 1;
+    i: int = const 0;
+    x: int = id i;
+.loop.header:
+    cond: bool = lt i n;
+    br cond .loop.body .loop.end;
+.loop.body:
+    i: int = add i one;
+    x: int = add x i;
+    jmp .loop.header;
+.loop.end:
+    ret x;
+}
+
+@main() {
+    n: int = const 42;
+    sum: int = call @summation n;
+    print sum; 
+}

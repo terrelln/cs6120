@@ -1,0 +1,10 @@
+@main(a: int) {
+.__block0:
+  cond.0: bool = const true;
+  br cond.0 .here .there;
+.here:
+  a.0: int = const 5;
+.there:
+  a.1: int = phi a a.0 .__block0 .here;
+  print a.1;
+}

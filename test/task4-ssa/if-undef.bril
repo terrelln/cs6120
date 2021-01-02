@@ -1,0 +1,12 @@
+# ARGS: false
+@main(cond: bool) {
+    br cond .true .false;
+.true:
+    a: int = const 0;
+    jmp .exit;
+.false:
+    b: int = const 1;
+    jmp .exit;
+.exit:
+    print b;
+}

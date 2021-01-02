@@ -1,0 +1,3 @@
+command = "bril2json < {filename} | ../../target/debug/ssa | brili {args}"
+# command = "bril2json < {filename} | brili {args}"
+output.stdout = "-"

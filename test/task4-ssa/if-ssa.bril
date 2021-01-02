@@ -1,0 +1,22 @@
+@func(cond: bool) {
+.entry:
+    a.1: int = const 47;
+    br cond .left .right;
+.left:
+    a.2: int = add a.1 a.1;
+    jmp .xit;
+.right:
+    a.3: int = mul a.1 a.1;
+    jmp .xit;
+.xit:
+    a.4: int = phi .left a.2 .right a.3;
+    print a.4;
+}
+
+
+@main() {
+    true: bool = const true;
+    false: bool = const false;
+    call @func true;
+    call @func false;
+}

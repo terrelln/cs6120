@@ -1,4 +1,4 @@
-use super::bril;
+use super::{bril, util};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -29,6 +29,7 @@ impl From<String> for BasicBlock {
     }
 }
 
+#[derive(Clone)]
 pub struct BasicBlocks {
     pub blocks: Vec<BasicBlock>,
     pub labels: HashMap<String, usize>,
@@ -45,6 +46,32 @@ impl BasicBlocks {
     pub fn create_label(&self) -> String {
         format!("__block{}", self.blocks.len())
     }
+
+    pub fn add_entry(&mut self, instrs: &Vec<bril::Code>) {
+        let entry_label = match instrs.iter().next() {
+            Some(bril::Code::Label { label }) => label,
+            _ => return,
+        };
+        let need_entry = instrs.iter().any(|instr| {
+            if let bril::Code::Instruction(instr) = instr {
+                if let Some(labels) = util::get_labels(instr) {
+                    return labels.iter().any(|label| label == entry_label);
+                }
+            }
+            return false;
+        });
+        if need_entry {
+            let mut block = BasicBlock::from(self.create_label());
+            let jmp = bril::Instruction::Effect {
+                op: bril::EffectOps::Jump,
+                labels: vec![entry_label.clone()],
+                args: Vec::new(),
+                funcs: Vec::new(),
+            };
+            block.instrs.push(jmp);
+            self.add(block);
+        }
+    }
 }
 
 pub fn get_labels(instr: &bril::Instruction) -> Option<&Vec<String>> {
@@ -56,7 +83,7 @@ pub fn get_labels(instr: &bril::Instruction) -> Option<&Vec<String>> {
             _ => {
                 assert_eq!(labels.len(), 0);
                 None
-            },
+            }
         },
         _ => None,
     }
@@ -74,6 +101,7 @@ impl BasicBlocks {
             pred: Vec::new(),
             succ: Vec::new(),
         };
+        blocks.add_entry(instrs);
         let mut block = BasicBlock::new();
         for instr in instrs {
             match instr {
@@ -119,7 +147,7 @@ impl BasicBlocks {
             }
             let fallthrough = match block.instrs.last() {
                 None => true,
-                Some(instr) => !is_jump(instr)
+                Some(instr) => !is_jump(instr),
             };
             if fallthrough && idx + 1 < self.blocks.len() {
                 succ.push(idx + 1);

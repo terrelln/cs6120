@@ -5,3 +5,5 @@ pub mod lvn;
 pub mod data_flow;
 pub mod analysis;
 pub mod util;
+pub mod ssa;
+pub mod cfg;

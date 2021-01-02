@@ -1,0 +1,14 @@
+@main(cond: bool) {
+.__block0:
+  br cond .true .false;
+.true:
+  a.0: int = const 0;
+  jmp .exit;
+.false:
+  b.0: int = const 1;
+  jmp .exit;
+.exit:
+  a.1: int = phi a.0 __undefined .true .false;
+  b.1: int = phi __undefined b.0 .true .false;
+  print b.1;
+}

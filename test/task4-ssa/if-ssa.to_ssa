@@ -1,0 +1,23 @@
+@func(cond: bool) {
+.entry:
+  a.1.0: int = const 47;
+  br cond .left .right;
+.left:
+  a.2.0: int = add a.1.0 a.1.0;
+  jmp .xit;
+.right:
+  a.3.0: int = mul a.1.0 a.1.0;
+  jmp .xit;
+.xit:
+  a.2.1: int = phi a.2.0 __undefined .left .right;
+  a.3.1: int = phi __undefined a.3.0 .left .right;
+  a.4.0: int = phi a.2.1 a.3.1 .left .right;
+  print a.4.0;
+}
+@main {
+.__block0:
+  true.0: bool = const true;
+  false.0: bool = const false;
+  call @func true.0;
+  call @func false.0;
+}

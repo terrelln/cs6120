@@ -35,6 +35,13 @@ pub fn evaluate(op: &bril::ValueOps, args: &Vec<bril::Literal>) -> bril::Literal
         bril::ValueOps::Not => bril::Literal::Bool(!unwrap_bool(&args[0])),
         bril::ValueOps::And => bril::Literal::Bool(unwrap_bool(&args[0]) && unwrap_bool(&args[1])),
         bril::ValueOps::Or => bril::Literal::Bool(unwrap_bool(&args[0]) || unwrap_bool(&args[1])),
+        bril::ValueOps::Phi => {
+            if args.windows(2).all(|w| w[0] == w[1]) {
+                args[0].clone()
+            } else {
+                panic!("All args must be identical!");
+            }
+        }
         bril::ValueOps::Call => panic!("Unsupported!"),
         bril::ValueOps::Id => args[0].clone(),
     }
@@ -56,6 +63,14 @@ pub fn get_type(instr: &bril::Instruction) -> Option<bril::Type> {
         bril::Instruction::Constant { const_type, .. } => Some(const_type.clone()),
         bril::Instruction::Value { op_type, .. } => Some(op_type.clone()),
         _ => None,
+    }
+}
+
+pub fn get_labels(instr: &bril::Instruction) -> Option<&Vec<String>> {
+    match instr {
+        bril::Instruction::Constant { .. } => None,
+        bril::Instruction::Value { labels, .. } => Some(labels),
+        bril::Instruction::Effect { labels, .. } => Some(labels),
     }
 }
 
@@ -103,6 +118,6 @@ pub fn constant(dest: String, value: bril::Literal) -> bril::Instruction {
         op: bril::ConstOps::Const,
         const_type,
         dest,
-        value
+        value,
     }
 }

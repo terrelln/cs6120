@@ -1,0 +1,48 @@
+@func(cond: bool, n: int): int {
+    one: int = const 1;
+    i: int = const 0;
+    x0: int = const 210;
+    x: int = id x0;
+    y: int = const 2;
+    z: int = const 66;
+    m0: int = id x;
+    m1: int = id y;
+    m2: int = id z;
+    r: int = const 0;
+.loop.header:
+    loop.cond: bool = lt i n;
+    br loop.cond .loop.body .loop.end;
+.loop.body:
+    x: int = div r x; 
+    r: int = add x r;
+    x: int = id x0;
+    m0: int = add m0 one;
+    br cond .if.true .if.false;
+.if.true:
+    y0: int = id y;
+    y: int = mul y y0;
+    r: int = add r y;
+    y: int = div y y0;
+    m1: int = add m1 one;
+    jmp .if.end;
+.if.false:
+    z: int = add z y;
+    r: int = add r z;
+    z: int = sub z y;
+    m2: int = add m2 one;
+.if.end:
+    i: int = add i one;
+    jmp .loop.header;
+.loop.end:
+    ret r;
+}
+
+@main() {
+    t: bool = const true;
+    f: bool = not t;
+    n: int = const 350;
+    n: int = call @func f n;
+    print n;
+    n: int = call @func t n;
+    print n;
+}

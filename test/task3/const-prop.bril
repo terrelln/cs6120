@@ -1,5 +1,5 @@
 # ARGS: const_prop
-@main(cond: bool) {
+@func(cond: bool): int {
     a: int = const 1;
     b: int = const 2;
     c: int = const 3;
@@ -15,5 +15,14 @@
     x: int = add a b;
     x: int = add x c;
     x: int = add x d;
-    print x;
+    ret x;
+}
+
+@main() {
+    t: bool = const true;
+    f: bool = not t;
+    x: int = call @func t;
+    y: int = call @func f;
+    z: int = add x y;
+    print z;
 }

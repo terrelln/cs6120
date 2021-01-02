@@ -1,0 +1,20 @@
+@func(cond: bool) {
+.entry:
+    a: int = const 47;
+    br cond .left .right;
+.left:
+    a: int = add a a;
+    jmp .exit;
+.right:
+    a: int = mul a a;
+    jmp .exit;
+.exit:
+    print a;
+}
+
+@main() {
+    true: bool = const true;
+    false: bool = const false;
+    call @func true;
+    call @func false;
+}

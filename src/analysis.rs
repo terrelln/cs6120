@@ -75,14 +75,14 @@ struct ConstantPropagationAlgorithm {
 }
 
 impl DataFlowAlgorithm for ConstantPropagationAlgorithm {
-    type Result = Option<HashMap<String, bril::Literal>>;
+    type Result = HashMap<String, bril::Literal>;
 
     fn direction(&self) -> DataFlowDirection {
         DataFlowDirection::Forward
     }
 
     fn init(&self) -> Self::Result {
-        None
+        HashMap::new()
     }
 
     fn transfer(
@@ -91,7 +91,7 @@ impl DataFlowAlgorithm for ConstantPropagationAlgorithm {
         block: &bb::BasicBlock,
         input: &Self::Result,
     ) -> Self::Result {
-        let mut constants = input.clone().unwrap_or(HashMap::new());
+        let mut constants = input.clone();
         for instr in &block.instrs {
             match instr.clone() {
                 bril::Instruction::Constant { dest, value, .. } => {
@@ -112,7 +112,7 @@ impl DataFlowAlgorithm for ConstantPropagationAlgorithm {
                 _ => {}
             }
         }
-        Some(constants)
+        constants
 
         // // Only insert constants that were already present, not newly created variables
         // let vars: Vec<String> = block
@@ -152,17 +152,14 @@ impl DataFlowAlgorithm for ConstantPropagationAlgorithm {
     }
 
     fn merge<'a>(&self, input: impl Iterator<Item = &'a Self::Result>) -> Self::Result {
-        let mut input = input.filter_map(|x| match x {
-            None => None,
-            Some(x) => Some(x),
-        });
+        let mut input = input;
         let first = input.next();
         match first {
-            None => None,
-            Some(first) => Some(input.fold(first.clone(), |mut merged, input| {
+            None => HashMap::new(),
+            Some(first) => input.fold(first.clone(), |mut merged, input| {
                 merged.retain(|var, lit| Some(&*lit) == input.get(var));
                 merged
-            })),
+            }),
         }
     }
 }
@@ -172,9 +169,5 @@ pub fn constant_propagation(function: bril::Function) -> Vec<HashMap<String, bri
         // function: &function,
     };
     let blocks = bb::BasicBlocks::from(&function.instrs);
-    let const_prop = data_flow(algo, &blocks).0;
-    const_prop
-        .into_iter()
-        .map(|x| x.unwrap_or(HashMap::new()))
-        .collect()
+    data_flow(algo, &blocks).0
 }
