@@ -1,6 +1,8 @@
 use super::{bril, util};
 use std::collections::HashMap;
 
+// TODO: Disentangle the CFG data from the BB data
+
 #[derive(Clone)]
 pub struct BasicBlock {
     pub label: String,
