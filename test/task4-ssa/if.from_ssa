@@ -4,14 +4,19 @@
   br cond .left .right;
 .left:
   a.1: int = add a.0 a.0;
-  jmp .exit;
+  jmp ._block4;
 .right:
   a.2: int = mul a.0 a.0;
-  jmp .exit;
+  jmp ._block5;
 .exit:
-  a.3: int = phi a.1 a.2 .left .right;
   print a.3;
   ret;
+._block4:
+  a.3: int = id a.1;
+  jmp .exit;
+._block5:
+  a.3: int = id a.2;
+  jmp .exit;
 }
 @main {
 ._block0:

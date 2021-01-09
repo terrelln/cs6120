@@ -1,0 +1,25 @@
+@main {
+._block0:
+  jmp .entry;
+.entry:
+  i.0: int = const 1;
+  jmp ._block5;
+.loop:
+  max.1: int = const 10;
+  cond.1: bool = lt i.1 max.1;
+  br cond.1 .body .exit;
+.body:
+  i.2: int = add i.1 i.1;
+  jmp ._block6;
+.exit:
+  print i.1;
+  ret;
+._block5:
+  i.1: int = id i.0;
+  jmp .loop;
+._block6:
+  cond.0: bool = id cond.1;
+  i.1: int = id i.2;
+  max.0: int = id max.1;
+  jmp .loop;
+}

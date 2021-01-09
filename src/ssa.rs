@@ -217,7 +217,7 @@ impl SSA {
 
     pub fn from_ssa(self) -> bril::Function {
         let mut blocks = bb::BasicBlocks::from(&self.function.instrs);
-        let init_after = analysis::initialized_variables(
+        let maybe_initialized_after = analysis::initialized_variables(
             &blocks,
             self.function
                 .args
@@ -226,7 +226,6 @@ impl SSA {
                 .collect(),
         )
         .1;
-        eprintln!("INIT = {:?}", init_after);
 
         // let mut rewrites = Vec::new();
         let mut rewrites = BTreeMap::new();
@@ -262,7 +261,7 @@ impl SSA {
             {
                 let mut block = bb::BasicBlock::from(new_label.clone());
                 for (typ, dest, arg) in vars {
-                    if init_after[pred_idx].contains(&arg) || defined.contains(&arg) {
+                    if maybe_initialized_after[pred_idx].contains(&arg) || defined.contains(&arg) {
                         block
                             .instrs
                             .push(bril::Instruction::id(typ, dest.clone(), arg));

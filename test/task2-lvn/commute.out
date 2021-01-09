@@ -1,15 +1,16 @@
 @foo(x: int, c: bool): int {
-.__block0:
+._block0:
   br c .true .false;
 .true:
   y: int = const 1;
   __var1: int = id x;
   x: int = add __var1 y;
+  jmp .false;
 .false:
   ret x;
 }
 @main(a: int, b: int) {
-.__block0:
+._block0:
   __var0: int = const 0;
   c: int = add a b;
   __var4: int = add __var0 c;
@@ -51,4 +52,5 @@
   __var40: int = call @foo __var38 w;
   x: int = call @foo __var40 w;
   print x;
+  ret;
 }

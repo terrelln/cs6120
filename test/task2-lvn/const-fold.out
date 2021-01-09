@@ -1,5 +1,6 @@
 @main {
-.__block0:
+._block0:
   prod2: int = const 216;
   print prod2;
+  ret;
 }

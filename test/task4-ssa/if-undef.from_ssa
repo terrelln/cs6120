@@ -3,13 +3,17 @@
   br cond .true .false;
 .true:
   a.0: int = const 0;
-  jmp .exit;
+  jmp .__block4;
 .false:
   b.0: int = const 1;
-  jmp .exit;
+  jmp .__block5;
 .exit:
-  a.1: int = phi a.0 __undefined .true .false;
-  b.1: int = phi __undefined b.0 .true .false;
   print b.1;
   ret;
+.__block4:
+  a.1: int = id a.0;
+  jmp .exit;
+.__block5:
+  b.1: int = id b.0;
+  jmp .exit;
 }

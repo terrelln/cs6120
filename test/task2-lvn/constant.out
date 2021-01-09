@@ -1,5 +1,6 @@
 @main {
-.__block0:
+._block0:
   y: int = const 1;
   print y;
+  ret;
 }

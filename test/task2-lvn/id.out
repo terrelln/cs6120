@@ -1,5 +1,5 @@
 @main(a: int): int {
-.__block0:
+._block0:
   print a;
   ret a;
 }

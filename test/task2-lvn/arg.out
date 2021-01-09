@@ -1,9 +1,10 @@
 @main(a: int, b: int) {
-.__block0:
+._block0:
   __var2: int = add a b;
   __var3: int = mul a b;
   f: int = add __var2 __var2;
   print __var3;
   print f;
   print f;
+  ret;
 }

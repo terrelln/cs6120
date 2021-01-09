@@ -1,0 +1,19 @@
+@main(a: int) {
+.__block0:
+  jmp ._block0;
+._block0:
+  cond.0: bool = const true;
+  br cond.0 .here .__block4;
+.here:
+  a.0: int = const 5;
+  jmp .__block5;
+.there:
+  print a.1;
+  ret;
+.__block4:
+  a.1: int = id a;
+  jmp .there;
+.__block5:
+  a.1: int = id a.0;
+  jmp .there;
+}

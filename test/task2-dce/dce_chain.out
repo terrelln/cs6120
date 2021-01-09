@@ -1,5 +1,5 @@
 @main(a: int): int {
-.__block0:
+._block0:
   b: int = const 1;
   c: int = add a b;
   d: int = id a;
@@ -9,6 +9,7 @@
   br g .block1 .block2;
 .block1:
   g1: int = id g;
+  jmp .block2;
 .block2:
   g1: int = id g;
   g1: int = add g1 g1;

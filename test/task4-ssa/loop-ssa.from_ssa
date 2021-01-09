@@ -1,0 +1,27 @@
+@main {
+._block0:
+  jmp .entry;
+.entry:
+  i.1.0: int = const 1;
+  jmp .__block5;
+.loop:
+  max.1: int = const 10;
+  cond.1: bool = lt i.2.1 max.1;
+  br cond.1 .body .exit;
+.body:
+  i.3.1: int = add i.2.1 i.2.1;
+  jmp .__block6;
+.exit:
+  print i.2.1;
+  ret;
+.__block5:
+  i.2.1: int = id i.1.0;
+  jmp .loop;
+.__block6:
+  cond.0: bool = id cond.1;
+  i.2.0: int = id i.2.1;
+  i.3.0: int = id i.3.1;
+  max.0: int = id max.1;
+  i.2.1: int = id i.3.0;
+  jmp .loop;
+}

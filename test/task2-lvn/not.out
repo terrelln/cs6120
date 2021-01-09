@@ -1,5 +1,5 @@
 @main(a: bool): bool {
-.__block0:
+._block0:
   b: bool = not a;
   c: bool = not b;
   d: bool = not c;
