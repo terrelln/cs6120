@@ -15,4 +15,4 @@ test-task2: build
 test-task4: build
 	turnt --config is_ssa.toml test/task4-ssa/*.bril
 	turnt --config to_ssa.toml test/task4-ssa/*.bril
-	turnt --config brili.toml test/task4-ssa/*.bril
+	turnt --config to_ssa_brili.toml test/task4-ssa/*.bril

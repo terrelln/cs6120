@@ -65,6 +65,37 @@ pub enum Instruction {
     },
 }
 
+impl Instruction {
+    pub fn jump(label: String) -> Instruction {
+        Instruction::Effect {
+            op: EffectOps::Jump,
+            args: Vec::new(),
+            funcs: Vec::new(),
+            labels: vec![label],
+        }
+    }
+    
+    pub fn ret() -> Instruction {
+        Instruction::Effect {
+            op: EffectOps::Return,
+            args: Vec::new(),
+            funcs: Vec::new(),
+            labels: Vec::new(),
+        }
+    }
+
+    pub fn id(t: Type, dest: String, arg: String) -> Instruction {
+        Instruction::Value {
+            op: ValueOps::Id,
+            op_type: t,
+            dest: dest,
+            args: vec![arg],
+            funcs: Vec::new(),
+            labels: Vec::new(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ConstOps {
     #[serde(rename = "const")]

@@ -1,6 +1,6 @@
-use super::{bb, bril, cfg, util};
+use super::{analysis, bb, bril, cfg, util};
 use itertools::izip;
-use std::collections::{BTreeSet, BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 pub struct SSA {
     pub function: bril::Function,
@@ -28,9 +28,12 @@ fn rename<'a, 'b>(
     phis: &Vec<BTreeSet<String>>,
     cfg: &cfg::CFG,
     dom: &cfg::DominanceTree,
-    args: impl Iterator<Item=&'a String>,
-    vars: impl Iterator<Item=&'b String>,
-) -> (Vec<BTreeMap<String, (String, Vec<(String, String)>)>>, Vec<Vec<bril::Instruction>>) {
+    args: impl Iterator<Item = &'a String>,
+    vars: impl Iterator<Item = &'b String>,
+) -> (
+    Vec<BTreeMap<String, (String, Vec<(String, String)>)>>,
+    Vec<Vec<bril::Instruction>>,
+) {
     let mut blocks = std::iter::repeat(Vec::new()).take(cfg.len()).collect();
     let mut names = {
         let vars_iter = vars.map(|var| (var.clone(), (0, Vec::new())));
@@ -41,13 +44,18 @@ fn rename<'a, 'b>(
     let mut out_phis = phis
         .iter()
         .map(|phis| {
-            phis
-                .iter()
+            phis.iter()
                 .map(|var| (var.clone(), (var.clone(), Vec::new())))
                 .collect()
         })
         .collect();
-    rename_impl(&mut blocks, &mut names, &mut out_phis, dom, cfg.get_block(0));
+    rename_impl(
+        &mut blocks,
+        &mut names,
+        &mut out_phis,
+        dom,
+        cfg.get_block(0),
+    );
     (out_phis, blocks)
 }
 
@@ -59,7 +67,10 @@ fn rename_impl(
     block: cfg::Block,
 ) {
     let out_block = &mut blocks[block.idx()];
-    let lens: Vec<_> = names.iter().map(|(var, (_, vec))| (var.clone(), vec.len())).collect();
+    let lens: Vec<_> = names
+        .iter()
+        .map(|(var, (_, vec))| (var.clone(), vec.len()))
+        .collect();
     {
         let phi = &mut phis[block.idx()];
         for (_var, (dest, _args)) in phi.iter_mut() {
@@ -97,7 +108,11 @@ fn rename_impl(
             args.push((block.label().clone(), name));
         }
     }
-    eprintln!("{} -> {:?}", block.idx(), dom.immediately_dominated(block.idx()).collect::<Vec<_>>());
+    eprintln!(
+        "{} -> {:?}",
+        block.idx(),
+        dom.immediately_dominated(block.idx()).collect::<Vec<_>>()
+    );
     for block in dom.immediately_dominated(block.idx()) {
         rename_impl(blocks, names, phis, dom, block);
     }
@@ -140,9 +155,9 @@ impl SSA {
             }
         }
         let cfg = cfg::CFG::new(&blocks);
-        eprintln!("{:?}", cfg);
+        // eprintln!("{:?}", cfg);
         let dom = cfg::DominanceTree::new(cfg);
-        eprintln!("{:?}", dom);
+        // eprintln!("{:?}", dom);
         // for idx in 0..cfg.len() {
         //     eprintln!("df {}", idx);
         //     eprintln!("{:?}", dom.dominance_frontier(idx).collect::<Vec<_>>());
@@ -201,6 +216,78 @@ impl SSA {
     }
 
     pub fn from_ssa(self) -> bril::Function {
-        self.function
+        let mut blocks = bb::BasicBlocks::from(&self.function.instrs);
+        let init_after = analysis::initialized_variables(
+            &blocks,
+            self.function
+                .args
+                .iter()
+                .map(|arg| arg.name.clone())
+                .collect(),
+        )
+        .1;
+        eprintln!("INIT = {:?}", init_after);
+
+        // let mut rewrites = Vec::new();
+        let mut rewrites = BTreeMap::new();
+        for idx in 0..blocks.blocks.len() {
+            let block = &blocks.blocks[idx];
+            let mut instrs = Vec::new();
+            for instr in &block.instrs {
+                if util::is_value_op(instr, bril::ValueOps::Phi) {
+                    let dest = util::unwrap_dest(instr);
+                    let typ = util::unwrap_type(instr);
+                    let args = util::get_args(instr).unwrap();
+                    let labels = util::get_labels(instr).unwrap();
+                    for (arg, label) in args.iter().zip(labels.iter()) {
+                        let pred = blocks.labels[label];
+                        rewrites.entry((pred, idx)).or_insert(Vec::new()).push((
+                            typ.clone(),
+                            dest.clone(),
+                            arg.clone(),
+                        ));
+                    }
+                } else {
+                    instrs.push(instr.clone());
+                }
+            }
+            blocks.blocks[idx].instrs = instrs;
+        }
+
+        for ((pred_idx, block_idx), vars) in rewrites {
+            let mut defined = HashSet::new();
+            let old_label = blocks.blocks[block_idx].label.clone();
+            let new_label = blocks.create_label();
+            // Add a new block
+            {
+                let mut block = bb::BasicBlock::from(new_label.clone());
+                for (typ, dest, arg) in vars {
+                    if init_after[pred_idx].contains(&arg) || defined.contains(&arg) {
+                        block
+                            .instrs
+                            .push(bril::Instruction::id(typ, dest.clone(), arg));
+                    }
+                    defined.insert(dest);
+                }
+                block
+                    .instrs
+                    .push(bril::Instruction::jump(old_label.clone()));
+                blocks.blocks.push(block);
+            }
+            // Rewrite labels in predecessor: old_label -> new_label
+            blocks.blocks[pred_idx]
+                .instrs
+                .iter_mut()
+                .filter_map(|instr| util::get_labels_mut(instr))
+                .flat_map(|labels| labels.iter_mut())
+                .filter(|label| *label == &old_label)
+                .for_each(|label| *label = new_label.clone());
+        }
+
+        let instrs = blocks.to_instrs();
+        bril::Function {
+            instrs,
+            ..self.function
+        }
     }
 }

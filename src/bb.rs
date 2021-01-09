@@ -37,6 +37,7 @@ pub struct BasicBlocks {
     pub labels: HashMap<String, usize>,
     pub pred: Vec<Vec<usize>>,
     pub succ: Vec<Vec<usize>>,
+    prefix: String,
 }
 
 impl BasicBlocks {
@@ -45,8 +46,17 @@ impl BasicBlocks {
         self.blocks.push(block);
     }
 
+    fn set_prefix<'a>(&mut self, labels: impl Iterator<Item=&'a String>) {
+        let max = labels
+            .map(|label| label.chars().filter(|c| c == &'_' ).count())
+            .max()
+            .unwrap_or(0);
+        self.prefix = std::iter::repeat('_').take(max + 1).collect();
+    }
+
     pub fn create_label(&self) -> String {
-        format!("__block{}", self.blocks.len())
+        // Labels guaranteed to be unique by self.prefix
+        format!("{}block{}", self.prefix, self.blocks.len())
     }
 
     pub fn add_entry(&mut self, instrs: &Vec<bril::Code>) {
@@ -63,6 +73,7 @@ impl BasicBlocks {
             return false;
         });
         if need_entry {
+            // let mut block = BasicBlock::from(self.create_label());
             let mut block = BasicBlock::from(self.create_label());
             let jmp = bril::Instruction::Effect {
                 op: bril::EffectOps::Jump,
@@ -102,7 +113,14 @@ impl BasicBlocks {
             labels: HashMap::new(),
             pred: Vec::new(),
             succ: Vec::new(),
+            prefix: String::new(),
         };
+        blocks.set_prefix(
+            instrs.iter().filter_map(|instr| match instr {
+                bril::Code::Label{ label } => Some(label),
+                _ => None,
+            })
+        );
         blocks.add_entry(instrs);
         let mut block = BasicBlock::new();
         for instr in instrs {
@@ -140,19 +158,27 @@ impl BasicBlocks {
         for _ in 0usize..self.blocks.len() {
             self.pred.push(Vec::new());
         }
-        for (idx, block) in self.blocks.iter().enumerate() {
+        for idx in 0..self.blocks.len() {
             let mut succ = Vec::new();
-            for instr in &block.instrs {
-                if let Some(labels) = get_labels(instr) {
-                    succ.extend(labels.iter().map(|label| self.labels[label]));
-                }
-            }
-            let fallthrough = match block.instrs.last() {
+            let fallthrough = match self.blocks[idx].instrs.last() {
                 None => true,
                 Some(instr) => !is_jump(instr),
             };
-            if fallthrough && idx + 1 < self.blocks.len() {
-                succ.push(idx + 1);
+            // Add a jump instruction if needed
+            if fallthrough {
+                if idx + 1 < self.blocks.len() {
+                    let label = self.blocks[idx + 1].label.clone();
+                    let block = &mut self.blocks[idx];
+                    block.instrs.push(bril::Instruction::jump(label));
+                } else {
+                    let block = &mut self.blocks[idx];
+                    block.instrs.push(bril::Instruction::ret());
+                }
+            }
+            for instr in &self.blocks[idx].instrs {
+                if let Some(l) = get_labels(instr) {
+                    succ.extend(l.iter().map(|label| self.labels[label]));
+                }
             }
             for s in &succ {
                 self.pred[*s].push(idx);
@@ -171,7 +197,10 @@ impl BasicBlocks {
             blocks,
             pred: Vec::new(),
             succ: Vec::new(),
+            prefix: String::new(),
         };
+        let labels: Vec<_> = blocks.blocks.iter().map(|block| block.label.clone()).collect();
+        blocks.set_prefix(labels.iter());
         blocks.compute_successors();
         blocks
     }

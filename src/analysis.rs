@@ -53,7 +53,7 @@ impl DataFlowAlgorithm for ReachingDefinitionsAlgorithm {
     }
 
     fn merge<'a>(&self, input: impl Iterator<Item = &'a Self::Result>) -> Self::Result {
-        input.fold(HashMap::new(), |mut merged, input| {
+        input.fold(self.init(), |mut merged, input| {
             for (var, locs) in input {
                 merged
                     .entry(var.clone())
@@ -68,6 +68,51 @@ impl DataFlowAlgorithm for ReachingDefinitionsAlgorithm {
 pub fn reaching_defs(blocks: &bb::BasicBlocks) -> Vec<HashMap<String, HashSet<Loc>>> {
     let algo = ReachingDefinitionsAlgorithm {};
     data_flow(algo, blocks).0
+}
+
+struct InitializedVariablesAlgorithm {
+    args: HashSet<String>,
+}
+
+impl DataFlowAlgorithm for InitializedVariablesAlgorithm {
+    type Result = HashSet<String>;
+
+    fn direction(&self) -> DataFlowDirection {
+        DataFlowDirection::Forward
+    }
+
+    fn init(&self) -> Self::Result {
+        self.args.clone()
+    }
+
+    fn transfer(
+        &self,
+        _block_id: usize,
+        block: &bb::BasicBlock,
+        input: &Self::Result,
+    ) -> Self::Result {
+        let defined: HashSet<_> = block
+            .instrs
+            .iter()
+            .filter_map(|instr| util::get_dest(instr))
+            .cloned()
+            .collect();
+        input | &defined
+    }
+
+    fn merge<'a>(&self, input: impl Iterator<Item = &'a Self::Result>) -> Self::Result {
+        input.fold(self.init(), |merged, input| &merged | input)
+    }
+}
+
+// Returns the set of variables which are possibly initialized
+// Any variable not in the set is definitely not initialized
+pub fn initialized_variables(
+    blocks: &bb::BasicBlocks,
+    args: HashSet<String>,
+) -> (Vec<HashSet<String>>, Vec<HashSet<String>>) {
+    let algo = InitializedVariablesAlgorithm { args };
+    data_flow(algo, blocks)
 }
 
 struct ConstantPropagationAlgorithm {
@@ -155,7 +200,7 @@ impl DataFlowAlgorithm for ConstantPropagationAlgorithm {
         let mut input = input;
         let first = input.next();
         match first {
-            None => HashMap::new(),
+            None => self.init(),
             Some(first) => input.fold(first.clone(), |mut merged, input| {
                 merged.retain(|var, lit| Some(&*lit) == input.get(var));
                 merged

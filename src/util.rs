@@ -74,6 +74,14 @@ pub fn get_labels(instr: &bril::Instruction) -> Option<&Vec<String>> {
     }
 }
 
+pub fn get_labels_mut(instr: &mut bril::Instruction) -> Option<&mut Vec<String>> {
+    match instr {
+        bril::Instruction::Constant { .. } => None,
+        bril::Instruction::Value { labels, .. } => Some(labels),
+        bril::Instruction::Effect { labels, .. } => Some(labels),
+    }
+}
+
 pub fn unwrap_type(instr: &bril::Instruction) -> bril::Type {
     get_type(instr).unwrap()
 }
@@ -98,6 +106,21 @@ pub fn unwrap_dest(instr: &bril::Instruction) -> &String {
     get_dest(instr).unwrap()
 }
 
+pub fn get_args(instr: &bril::Instruction) -> Option<&Vec<String>> {
+    match instr {
+        bril::Instruction::Constant { .. } => None,
+        bril::Instruction::Value { args, .. } => Some(args),
+        bril::Instruction::Effect { args, .. } => Some(args),
+    }
+}
+
+pub fn is_value_op(instr: &bril::Instruction, expect: bril::ValueOps) -> bool {
+    match instr {
+        bril::Instruction::Value { op, .. } => *op == expect,
+        _ => false,
+    }
+}
+
 pub fn id(t: bril::Type, dest: String, arg: String) -> bril::Instruction {
     bril::Instruction::Value {
         op: bril::ValueOps::Id,
@@ -120,4 +143,39 @@ pub fn constant(dest: String, value: bril::Literal) -> bril::Instruction {
         dest,
         value,
     }
+}
+
+pub fn get_instr(code: &bril::Code) -> Option<&bril::Instruction> {
+    match code {
+        bril::Code::Instruction ( instr ) => Some(instr),
+        bril::Code::Label { .. } => None,
+    }
+}
+
+pub fn get_variable_types(function: &bril::Function) -> impl Iterator<Item=(&String, bril::Type)> {
+    let args_iter = function.args.iter().map(|arg| (&arg.name, arg.arg_type.clone()));
+    let instr_iter = function
+        .instrs
+        .iter()
+        .filter_map(|code| get_instr(code))
+        .filter(|instr| get_dest(instr).is_some())
+        .map(|instr| (unwrap_dest(instr), unwrap_type(instr)));
+    args_iter.chain(instr_iter)
+}
+
+// All referenced variables (may or may not be defined)
+pub fn get_referenced_variables(function: &bril::Function) -> impl Iterator<Item=&String> {
+    let args_iter = function.args.iter().map(|arg| &arg.name);
+    let instr_dest_iter = function
+        .instrs
+        .iter()
+        .filter_map(|code| get_instr(code))
+        .filter_map(|instr| get_dest(instr));
+    let instr_args_iter = function
+        .instrs
+        .iter()
+        .filter_map(|code| get_instr(code))
+        .filter_map(|instr| get_args(instr))
+        .flat_map(|args| args.iter());
+    args_iter.chain(instr_dest_iter).chain(instr_args_iter)
 }
