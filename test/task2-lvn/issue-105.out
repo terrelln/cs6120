@@ -1,0 +1,8 @@
+@main {
+._block0:
+  __var1: int = const 0;
+  v2: int = const 3;
+  print __var1;
+  print v2;
+  ret;
+}

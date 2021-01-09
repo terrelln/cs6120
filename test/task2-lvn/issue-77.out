@@ -1,0 +1,10 @@
+@main {
+._block0:
+  a: int = const 42;
+  jmp .lbl;
+.lbl:
+  __var0: int = id a;
+  a: int = const 5;
+  print __var0;
+  ret;
+}
