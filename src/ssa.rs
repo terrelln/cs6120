@@ -254,12 +254,14 @@ impl SSA {
         }
 
         for ((pred_idx, block_idx), vars) in rewrites {
-            let mut defined = HashSet::new();
             let old_label = blocks.blocks[block_idx].label.clone();
             let new_label = blocks.create_label();
-            // Add a new block
+            // Add a block labelled new_label that defines all the variables
+            // needed along the edge (pred_idx, block_idx)
             {
+                let mut defined = HashSet::new(); // Variables defined in this block
                 let mut block = bb::BasicBlock::from(new_label.clone());
+                // Define each variable
                 for (typ, dest, arg) in vars {
                     if maybe_initialized_after[pred_idx].contains(&arg) || defined.contains(&arg) {
                         block
@@ -268,6 +270,7 @@ impl SSA {
                     }
                     defined.insert(dest);
                 }
+                // Jump to the target block
                 block
                     .instrs
                     .push(bril::Instruction::jump(old_label.clone()));
