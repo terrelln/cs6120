@@ -115,6 +115,58 @@ pub fn initialized_variables(
     data_flow(algo, blocks)
 }
 
+struct UninitializedVariablesAlgorithm {
+    variables: HashSet<String>,
+}
+
+impl DataFlowAlgorithm for UninitializedVariablesAlgorithm {
+    type Result = HashSet<String>;
+
+    fn direction(&self) -> DataFlowDirection {
+        DataFlowDirection::Forward
+    }
+
+    fn init(&self) -> Self::Result {
+        self.variables.clone()
+    }
+
+    fn transfer(
+        &self,
+        _block_id: usize,
+        block: &bb::BasicBlock,
+        input: &Self::Result,
+    ) -> Self::Result {
+        let defined: HashSet<_> = block
+            .instrs
+            .iter()
+            .filter_map(|instr| util::get_dest(instr))
+            .cloned()
+            .collect();
+        input - &defined
+    }
+
+    fn merge<'a>(&self, input: impl Iterator<Item = &'a Self::Result>) -> Self::Result {
+        let mut input = input;
+        if let Some(first) = input.next().clone() {
+            input.fold(first.clone(), |merged, input| &merged | input)
+        } else {
+            self.init()
+        }
+    }
+}
+
+// Returns the set of variables which are possibly initialized
+// Any variable not in the set is definitely not initialized
+pub fn uninitialized_variables(
+    blocks: &bb::BasicBlocks,
+    args: HashSet<String>,
+) -> (Vec<HashSet<String>>, Vec<HashSet<String>>) {
+    let mut variables = args;
+    variables.extend(blocks.get_referenced_variables().cloned());
+    let algo = UninitializedVariablesAlgorithm { variables };
+    data_flow(algo, blocks)
+}
+
 struct ConstantPropagationAlgorithm {
     // function: &'a bril::Function,
 }
