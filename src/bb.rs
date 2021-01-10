@@ -20,6 +20,15 @@ impl BasicBlock {
     pub fn is_empty(&self) -> bool {
         self.instrs.is_empty() && self.label.is_empty()
     }
+
+    pub fn uses(&self, var: &String) -> bool {
+        self
+            .instrs
+            .iter()
+            .filter_map(|instr| util::get_args(instr))
+            .flat_map(|args| args.iter())
+            .any(|arg| arg == var)
+    }
 }
 
 impl From<String> for BasicBlock {
@@ -107,6 +116,21 @@ pub fn is_jump(instr: &bril::Instruction) -> bool {
 }
 
 impl BasicBlocks {
+    pub fn get_referenced_variables(&self) -> impl Iterator<Item=&String> {
+        let dest_iter = self
+            .blocks
+            .iter()
+            .flat_map(|block| block.instrs.iter())
+            .filter_map(|instr| util::get_dest(instr));
+        let args_iter = self
+            .blocks
+            .iter()
+            .flat_map(|block| block.instrs.iter())
+            .filter_map(|instr| util::get_args(instr))
+            .flat_map(|args| args.iter());
+        dest_iter.chain(args_iter)
+    }
+
     pub fn from(instrs: &Vec<bril::Code>) -> BasicBlocks {
         let mut blocks = BasicBlocks {
             blocks: Vec::new(),
