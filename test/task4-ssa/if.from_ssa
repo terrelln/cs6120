@@ -1,5 +1,7 @@
 @func(cond: bool) {
 .entry:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   a.0: int = const 47;
   br cond .left .right;
 .left:
@@ -20,6 +22,7 @@
 }
 @main {
 ._block0:
+  __undefined.bool: bool = const false;
   true.0: bool = const true;
   false.0: bool = const false;
   call @func true.0;

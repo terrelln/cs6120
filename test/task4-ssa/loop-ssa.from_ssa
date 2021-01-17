@@ -1,5 +1,7 @@
 @main {
 ._block0:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   jmp .entry;
 .entry:
   i.1.0: int = const 1;
@@ -15,6 +17,10 @@
   print i.2.1;
   ret;
 .__block5:
+  cond.0: bool = id __undefined.bool;
+  i.2.0: int = id __undefined.int;
+  i.3.0: int = id __undefined.int;
+  max.0: int = id __undefined.int;
   i.2.1: int = id i.1.0;
   jmp .loop;
 .__block6:

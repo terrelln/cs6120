@@ -1,46 +1,185 @@
-use super::{analysis, bb, bril, cfg, util};
-use itertools::izip;
+use super::{bb, bril, cfg, util};
+use itertools::{izip, Itertools};
+use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 pub struct SSA {
     pub function: bril::Function,
 }
 
-fn rename_args(args: &mut Vec<String>, names: &HashMap<String, (usize, Vec<String>)>) {
-    for arg in args {
-        *arg = names[arg].1.last().unwrap().clone();
+fn type_name(var_type: &bril::Type) -> String {
+    match var_type {
+        bril::Type::Bool => "bool".to_string(),
+        bril::Type::Int => "int".to_string(),
+        bril::Type::Float => "float".to_string(),
+        bril::Type::Pointer(ptr_type) => format!("ptr.{}", type_name(ptr_type)),
     }
 }
 
-fn rename_dest(dest: &mut String, names: &mut HashMap<String, (usize, Vec<String>)>) {
-    let (count, stack) = names.get_mut(dest).unwrap();
-    let name = format!("{}.{}", dest, count);
-    *count += 1;
-    stack.push(name.clone());
-    *dest = name;
+fn undefined_var(var_type: &bril::Type) -> String {
+    format!("__undefined.{}", type_name(var_type))
 }
 
-fn undefined_var() -> String {
-    "__undefined".to_string()
+fn undefined_value(var_type: &bril::Type) -> bril::Literal {
+    match var_type {
+        bril::Type::Bool => bril::Literal::Bool(false),
+        bril::Type::Int => bril::Literal::Int(0),
+        bril::Type::Float => bril::Literal::Float(OrderedFloat(0.0)),
+        bril::Type::Pointer(_) => panic!("Unsupported"),
+    }
+}
+
+fn add_undefined_vars(blocks: &mut bb::BasicBlocks, types: &HashMap<String, bril::Type>) {
+    let mut types: Vec<_> = types.values().cloned().collect();
+    types.sort();
+    let types: Vec<_> = types.into_iter().unique().collect();
+    let mut instrs = Vec::new();
+    if types.iter().any(|t| matches!(t, bril::Type::Pointer(_))) {
+        instrs.push(bril::Instruction::const_int(
+            "__undefined.zero".to_string(),
+            0,
+        ));
+    }
+    for undef_type in types {
+        let dest = undefined_var(&undef_type);
+        let instr = match undef_type {
+            bril::Type::Pointer(ptr_type) => {
+                bril::Instruction::alloc(dest, "__undefined.zero".to_string(), *ptr_type)
+            }
+            undef_type => {
+                let value = undefined_value(&undef_type);
+                bril::Instruction::constant(undef_type, dest, value)
+            }
+        };
+        instrs.push(instr);
+    }
+    // if let Some(block) = block {
+    //     block.instrs.insert(
+    //         0,
+    //         bril::Instruction::const_int(undefined_var(&bril::Type::Int), 0),
+    //     );
+    //     block.instrs.insert(
+    //         0,
+    //         bril::Instruction::const_bool(undefined_var(&bril::Type::Bool), false),
+    //     );
+    // }
+    let block = blocks.blocks.first_mut();
+    if let Some(block) = block {
+        std::mem::swap(&mut instrs, &mut block.instrs);
+        block.instrs.extend(instrs.into_iter());
+    }
+}
+
+#[derive(Clone)]
+struct Def {
+    block: usize,
+    name: String,
+}
+
+struct ReachingDefs<'a> {
+    dom: &'a cfg::DominanceTree<'a>,
+    counts: HashMap<String, usize>,
+    defs: HashMap<String, Def>,
+    types: &'a HashMap<String, bril::Type>,
+}
+
+impl<'a> ReachingDefs<'a> {
+    fn new<'b>(
+        dom: &'a cfg::DominanceTree<'a>,
+        types: &'a HashMap<String, bril::Type>,
+        args: impl Iterator<Item = &'b String>,
+    ) -> ReachingDefs<'a> {
+        let defs = args
+            .map(|arg| {
+                (
+                    arg.clone(),
+                    Def {
+                        block: 0,
+                        name: arg.clone(),
+                    },
+                )
+            })
+            .collect();
+        ReachingDefs {
+            dom,
+            defs,
+            counts: HashMap::new(),
+            types,
+        }
+    }
+
+    fn fresh(&mut self, var: &String, block: usize) -> String {
+        let count = self.counts.entry(var.clone()).or_insert(0);
+        let new = format!("{}.{}", var, count);
+        *count += 1;
+        let def = self.update_reaching_def(var, block);
+        if let Some(def) = def {
+            self.defs.insert(new.clone(), def);
+        }
+        self.defs.insert(
+            var.clone(),
+            Def {
+                block,
+                name: new.clone(),
+            },
+        );
+        new
+    }
+
+    fn reaching_def(&self, var: &String) -> Option<Def> {
+        self.defs.get(var).map(|def| def.clone())
+    }
+
+    fn update_reaching_def(&mut self, var: &String, block: usize) -> Option<Def> {
+        let mut r = self.reaching_def(var);
+        loop {
+            if let Some(def) = &r {
+                let dominates = |x, y| self.dom.dominated(x).any(|b| b.idx() == y);
+                if !dominates(def.block, block) {
+                    r = self.reaching_def(&def.name);
+                    continue;
+                }
+            }
+            break;
+        }
+        match &r {
+            Some(def) => self.defs.insert(var.clone(), def.clone()),
+            None => self.defs.remove(var),
+        };
+        r
+    }
+
+    fn rename_args(&mut self, block: usize, args: &mut Vec<String>) {
+        for arg in args {
+            *arg = self.new_arg(block, arg);
+        }
+    }
+
+    fn new_arg(&mut self, block: usize, arg: &String) -> String {
+        let def = self.update_reaching_def(arg, block);
+        match def {
+            Some(def) => def.name,
+            None => undefined_var(&self.types[arg]),
+        }
+    }
+
+    fn rename_dest(&mut self, block: usize, dest: &mut String) {
+        let new_dest = self.fresh(dest, block);
+        *dest = new_dest;
+    }
 }
 
 fn rename<'a, 'b>(
     phis: &Vec<BTreeSet<String>>,
     cfg: &cfg::CFG,
     dom: &cfg::DominanceTree,
+    types: &HashMap<String, bril::Type>,
     args: impl Iterator<Item = &'a String>,
-    vars: impl Iterator<Item = &'b String>,
 ) -> (
     Vec<BTreeMap<String, (String, Vec<(String, String)>)>>,
     Vec<Vec<bril::Instruction>>,
 ) {
     let mut blocks = std::iter::repeat(Vec::new()).take(cfg.len()).collect();
-    let mut names = {
-        let vars_iter = vars.map(|var| (var.clone(), (0, Vec::new())));
-        // args comes second because its value takes priority
-        let args_iter = args.map(|var| (var.clone(), (0, vec![var.clone()])));
-        vars_iter.chain(args_iter).collect()
-    };
     let mut out_phis = phis
         .iter()
         .map(|phis| {
@@ -49,9 +188,10 @@ fn rename<'a, 'b>(
                 .collect()
         })
         .collect();
+    let mut reaching_defs = ReachingDefs::new(dom, types, args);
     rename_impl(
         &mut blocks,
-        &mut names,
+        &mut reaching_defs,
         &mut out_phis,
         dom,
         cfg.get_block(0),
@@ -61,27 +201,23 @@ fn rename<'a, 'b>(
 
 fn rename_impl(
     blocks: &mut Vec<Vec<bril::Instruction>>,
-    names: &mut HashMap<String, (usize, Vec<String>)>,
+    reaching_defs: &mut ReachingDefs,
     phis: &mut Vec<BTreeMap<String, (String, Vec<(String, String)>)>>,
     dom: &cfg::DominanceTree,
     block: cfg::Block,
 ) {
     let out_block = &mut blocks[block.idx()];
-    let lens: Vec<_> = names
-        .iter()
-        .map(|(var, (_, vec))| (var.clone(), vec.len()))
-        .collect();
     {
         let phi = &mut phis[block.idx()];
         for (_var, (dest, _args)) in phi.iter_mut() {
-            rename_dest(dest, names);
+            reaching_defs.rename_dest(block.idx(), dest);
         }
     }
     for mut instr in block.instrs().clone() {
         match &mut instr {
             &mut bril::Instruction::Constant { ref mut dest, .. } => {
                 // eprintln!("const dest = {}", dest);
-                rename_dest(dest, names);
+                reaching_defs.rename_dest(block.idx(), dest);
             }
             &mut bril::Instruction::Value {
                 ref mut dest,
@@ -89,11 +225,11 @@ fn rename_impl(
                 ..
             } => {
                 // assert_ne!(op, bril::ValueOps::Phi);
-                rename_args(args, names);
-                rename_dest(dest, names);
+                reaching_defs.rename_args(block.idx(), args);
+                reaching_defs.rename_dest(block.idx(), dest);
             }
             &mut bril::Instruction::Effect { ref mut args, .. } => {
-                rename_args(args, names);
+                reaching_defs.rename_args(block.idx(), args);
             }
         }
         out_block.push(instr);
@@ -101,10 +237,7 @@ fn rename_impl(
 
     for &idx in block.succ() {
         for (var, (_dest, args)) in phis[idx].iter_mut() {
-            let name = match names[var].1.last() {
-                None => undefined_var(),
-                Some(name) => name.clone(),
-            };
+            let name = reaching_defs.new_arg(block.idx(), var);
             args.push((block.label().clone(), name));
         }
     }
@@ -114,10 +247,7 @@ fn rename_impl(
         dom.immediately_dominated(block.idx()).collect::<Vec<_>>()
     );
     for block in dom.immediately_dominated(block.idx()) {
-        rename_impl(blocks, names, phis, dom, block);
-    }
-    for (var, len) in &lens {
-        names.get_mut(var).unwrap().1.resize(*len, String::new());
+        rename_impl(blocks, reaching_defs, phis, dom, block);
     }
 }
 
@@ -190,8 +320,8 @@ impl SSA {
             &phis,
             &cfg,
             &dom,
+            &types,
             function.args.iter().map(|arg| &arg.name),
-            types.keys(),
         );
         let iter = izip!(
             out_phis.into_iter(),
@@ -208,7 +338,8 @@ impl SSA {
                 bb::BasicBlock { instrs, label }
             })
             .collect();
-        let blocks = bb::BasicBlocks::from_blocks(blocks);
+        let mut blocks = bb::BasicBlocks::from_blocks(blocks);
+        add_undefined_vars(&mut blocks, &types);
         let mut function = function.clone();
         function.instrs = blocks.to_instrs();
 
@@ -217,15 +348,6 @@ impl SSA {
 
     pub fn from_ssa(self) -> bril::Function {
         let mut blocks = bb::BasicBlocks::from(&self.function.instrs);
-        let maybe_initialized_after = analysis::initialized_variables(
-            &blocks,
-            self.function
-                .args
-                .iter()
-                .map(|arg| arg.name.clone())
-                .collect(),
-        )
-        .1;
 
         // let mut rewrites = Vec::new();
         let mut rewrites = BTreeMap::new();
@@ -263,11 +385,9 @@ impl SSA {
                 let mut block = bb::BasicBlock::from(new_label.clone());
                 // Define each variable
                 for (typ, dest, arg) in vars {
-                    if maybe_initialized_after[pred_idx].contains(&arg) || defined.contains(&arg) {
-                        block
-                            .instrs
-                            .push(bril::Instruction::id(typ, dest.clone(), arg));
-                    }
+                    block
+                        .instrs
+                        .push(bril::Instruction::id(typ, dest.clone(), arg));
                     defined.insert(dest);
                 }
                 // Jump to the target block
@@ -285,7 +405,6 @@ impl SSA {
                 .filter(|label| *label == &old_label)
                 .for_each(|label| *label = new_label.clone());
         }
-
         let instrs = blocks.to_instrs();
         bril::Function {
             instrs,

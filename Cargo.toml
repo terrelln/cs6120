@@ -13,9 +13,10 @@ name = "cs6120"
 serde_json = "1.0"
 itertools = "0.10.0"
 serde = { version = "1.0", features = ["derive"] }
+ordered-float = { version = "2.0", features = ["serde"] }
 
 [features]
-default = ["ssa"]
+default = ["float", "memory", "ssa", "speculate"]
 float = []
 memory = []
 ssa = []

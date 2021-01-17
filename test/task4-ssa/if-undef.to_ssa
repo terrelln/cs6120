@@ -1,5 +1,7 @@
 @main(cond: bool) {
 ._block0:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   br cond .true .false;
 .true:
   a.0: int = const 0;
@@ -8,8 +10,8 @@
   b.0: int = const 1;
   jmp .exit;
 .exit:
-  a.1: int = phi a.0 __undefined .true .false;
-  b.1: int = phi __undefined b.0 .true .false;
+  a.1: int = phi a.0 __undefined.int .true .false;
+  b.1: int = phi __undefined.int b.0 .true .false;
   print b.1;
   ret;
 }

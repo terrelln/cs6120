@@ -2,6 +2,8 @@
 ._block0:
   jmp .entry;
 .entry:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   i.0: int = const 1;
   jmp ._block5;
 .loop:
@@ -15,7 +17,9 @@
   print i.1;
   ret;
 ._block5:
+  cond.0: bool = id __undefined.bool;
   i.1: int = id i.0;
+  max.0: int = id __undefined.int;
   jmp .loop;
 ._block6:
   cond.0: bool = id cond.1;

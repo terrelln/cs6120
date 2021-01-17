@@ -18,3 +18,5 @@ test-task4: build
 	turnt --config to_ssa_brili.toml test/task4-ssa/*.bril
 	turnt --config from_ssa_brili.toml test/task4-ssa/*.bril
 	turnt --config from_ssa.toml test/task4-ssa/*.bril
+	turnt --config turnt_to_ssa.toml benchmarks/*.bril
+	turnt --config turnt_from_ssa.toml benchmarks/*.bril

@@ -2,6 +2,8 @@
 .__block0:
   jmp ._block0;
 ._block0:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   jmp .__block5;
 .while.cond:
   zero.1: int = const 0;
@@ -16,6 +18,9 @@
   ret;
 .__block5:
   a.0: int = id a;
+  is_term.0: bool = id __undefined.bool;
+  one.0: int = id __undefined.int;
+  zero.0: int = id __undefined.int;
   jmp .while.cond;
 .__block6:
   a.0: int = id a.1;

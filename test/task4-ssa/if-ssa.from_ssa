@@ -1,5 +1,7 @@
 @func(cond: bool) {
 .entry:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   a.1.0: int = const 47;
   br cond .left .right;
 .left:
@@ -13,15 +15,18 @@
   ret;
 ._block4:
   a.2.1: int = id a.2.0;
+  a.3.1: int = id __undefined.int;
   a.4.0: int = id a.2.1;
   jmp .xit;
 ._block5:
+  a.2.1: int = id __undefined.int;
   a.3.1: int = id a.3.0;
   a.4.0: int = id a.3.1;
   jmp .xit;
 }
 @main {
 ._block0:
+  __undefined.bool: bool = const false;
   true.0: bool = const true;
   false.0: bool = const false;
   call @func true.0;

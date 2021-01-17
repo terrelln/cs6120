@@ -21,6 +21,7 @@ fn main() {
                     let (type_str, value_str) = match value {
                         bril::Literal::Bool(v) => ("bool", v.to_string()),
                         bril::Literal::Int(v) => ("int", v.to_string()),
+                        bril::Literal::Float(v) => ("float", v.to_string()),
                     };
                     println!("\t\t{}: {} = {}", var, type_str, value_str);
                 }

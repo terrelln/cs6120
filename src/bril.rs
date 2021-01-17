@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read, Write};
+use std::cmp::Ordering;
+use ordered_float::OrderedFloat;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Program {
@@ -94,6 +96,35 @@ impl Instruction {
             labels: Vec::new(),
         }
     }
+
+    pub fn constant(t: Type, dest: String, value: Literal) -> Instruction {
+        Instruction::Constant {
+            op: ConstOps::Const,
+            const_type: t,
+            dest: dest,
+            value: value,
+        }
+    }
+
+    pub fn const_int(dest: String, value: i64) -> Instruction {
+        Self::constant(Type::Int, dest, Literal::Int(value))
+    }
+
+    pub fn const_bool(dest: String, value: bool) -> Instruction {
+        Self::constant(Type::Bool, dest, Literal::Bool(value))
+    }
+
+    pub fn alloc(dest: String, size: String, ptr_type: Type) -> Instruction {
+        let var_type = Type::Pointer(Box::new(ptr_type));
+        Instruction::Value {
+            op: ValueOps::Alloc,
+            op_type: var_type,
+            dest: dest,
+            args: vec![size],
+            funcs: Vec::new(),
+            labels: Vec::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -183,14 +214,64 @@ pub enum Type {
     Pointer(Box<Type>),
 }
 
+impl Ord for Type {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (x, y) if x == y => Ordering::Equal,
+            (Type::Bool, _) => Ordering::Less,
+            (_, Type::Bool) => Ordering::Greater,
+            (Type::Int, _) => Ordering::Less,
+            (_, Type::Int) => Ordering::Greater,
+            (Type::Float, _) => Ordering::Less,
+            (_, Type::Float) => Ordering::Greater,
+            (Type::Pointer(x), Type::Pointer(y)) => x.cmp(y),
+        }
+    }
+}
+
+impl PartialOrd for Type {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum Literal {
     Int(i64),
     Bool(bool),
     #[cfg(feature = "float")]
-    Float(f64),
+    Float(OrderedFloat<f64>),
 }
+
+// impl PartialEq for Literal {
+//     fn eq(&self, other: &Self) -> bool {
+//         match (self, other) {
+//             (Literal::Bool(x), Literal::Bool(y)) => x == y,
+//             (Literal::Int(x), Literal::Int(y)) => x == y,
+//             (Literal::Float(x), Literal::Float(y)) => {
+//                 if x.is_nan() && y.is_nan() {
+//                     true
+//                 } else {
+//                     x == y
+//                 }
+//             }
+//             _ => false,
+//         }
+//     }
+// }
+
+// impl Eq for Literal {}
+
+// impl Hash for Literal {
+//     fn hash<H: Hasher>(&self, state: &mut H) {
+//         match self {
+//             Literal::Bool(b) => {
+//                 0.hash(state);
+//             }
+//         }
+//     }
+// }
 
 pub fn load_program() -> Program {
     let mut buffer = String::new();

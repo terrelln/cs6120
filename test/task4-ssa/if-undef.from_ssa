@@ -1,5 +1,7 @@
 @main(cond: bool) {
 ._block0:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   br cond .true .false;
 .true:
   a.0: int = const 0;
@@ -12,8 +14,10 @@
   ret;
 .__block4:
   a.1: int = id a.0;
+  b.1: int = id __undefined.int;
   jmp .exit;
 .__block5:
+  a.1: int = id __undefined.int;
   b.1: int = id b.0;
   jmp .exit;
 }

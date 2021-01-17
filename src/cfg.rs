@@ -68,11 +68,13 @@ fn iterate(
 
 impl<'a> CFGIter<'a> {
     fn new(cfg: CFG<'a>, order: IterOrder) -> CFGIter<'a> {
+        // eprintln!("cfg: {:?}", cfg);
         let len = cfg.blocks.blocks.len();
         let mut visited: Vec<bool> = std::iter::repeat(false).take(len).collect();
         let mut blocks = Vec::with_capacity(len);
         iterate(&mut blocks, &mut visited, &cfg.blocks, order, 0usize);
-        assert_eq!(len, blocks.len());
+        assert!(blocks.len() <= len);
+        let len = blocks.len();
         CFGIter {
             cfg,
             blocks,

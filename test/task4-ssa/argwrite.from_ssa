@@ -2,6 +2,8 @@
 .__block0:
   jmp ._block0;
 ._block0:
+  __undefined.bool: bool = const false;
+  __undefined.int: int = const 0;
   cond.0: bool = const true;
   br cond.0 .here .__block4;
 .here:

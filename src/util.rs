@@ -1,4 +1,5 @@
 use super::bril;
+use ordered_float::OrderedFloat;
 
 pub fn is_effect(instr: &bril::Instruction) -> bool {
     match instr {
@@ -21,6 +22,13 @@ pub fn unwrap_bool(lit: &bril::Literal) -> bool {
     }
 }
 
+pub fn unwrap_float(lit: &bril::Literal) -> OrderedFloat<f64> {
+    match lit {
+        bril::Literal::Float(x) => *x,
+        _ => panic!("Not a float!"),
+    }
+}
+
 pub fn evaluate(op: &bril::ValueOps, args: &Vec<bril::Literal>) -> bril::Literal {
     match op {
         bril::ValueOps::Add => bril::Literal::Int(unwrap_int(&args[0]) + unwrap_int(&args[1])),
@@ -35,6 +43,15 @@ pub fn evaluate(op: &bril::ValueOps, args: &Vec<bril::Literal>) -> bril::Literal
         bril::ValueOps::Not => bril::Literal::Bool(!unwrap_bool(&args[0])),
         bril::ValueOps::And => bril::Literal::Bool(unwrap_bool(&args[0]) && unwrap_bool(&args[1])),
         bril::ValueOps::Or => bril::Literal::Bool(unwrap_bool(&args[0]) || unwrap_bool(&args[1])),
+        bril::ValueOps::Fadd => bril::Literal::Float(unwrap_float(&args[0]) + unwrap_float(&args[1])),
+        bril::ValueOps::Fdiv => bril::Literal::Float(unwrap_float(&args[0]) / unwrap_float(&args[1])),
+        bril::ValueOps::Feq => bril::Literal::Bool(unwrap_float(&args[0]) == unwrap_float(&args[1])),
+        bril::ValueOps::Fge => bril::Literal::Bool(unwrap_float(&args[0]) >= unwrap_float(&args[1])),
+        bril::ValueOps::Fgt => bril::Literal::Bool(unwrap_float(&args[0]) > unwrap_float(&args[1])),
+        bril::ValueOps::Fle => bril::Literal::Bool(unwrap_float(&args[0]) <= unwrap_float(&args[1])),
+        bril::ValueOps::Flt => bril::Literal::Bool(unwrap_float(&args[0]) < unwrap_float(&args[1])),
+        bril::ValueOps::Fmul => bril::Literal::Float(unwrap_float(&args[0]) * unwrap_float(&args[1])),
+        bril::ValueOps::Fsub => bril::Literal::Float(unwrap_float(&args[0]) - unwrap_float(&args[1])),
         bril::ValueOps::Phi => {
             if args.windows(2).all(|w| w[0] == w[1]) {
                 args[0].clone()
@@ -44,6 +61,9 @@ pub fn evaluate(op: &bril::ValueOps, args: &Vec<bril::Literal>) -> bril::Literal
         }
         bril::ValueOps::Call => panic!("Unsupported!"),
         bril::ValueOps::Id => args[0].clone(),
+        bril::ValueOps::Alloc => panic!("Unsupported!"),
+        bril::ValueOps::Load => panic!("Unsupported!"),
+        bril::ValueOps::PtrAdd => panic!("Unsupported!"),
     }
 }
 
@@ -136,6 +156,7 @@ pub fn constant(dest: String, value: bril::Literal) -> bril::Instruction {
     let const_type = match value {
         bril::Literal::Bool(_) => bril::Type::Bool,
         bril::Literal::Int(_) => bril::Type::Int,
+        bril::Literal::Float(_) => bril::Type::Float,
     };
     bril::Instruction::Constant {
         op: bril::ConstOps::Const,
