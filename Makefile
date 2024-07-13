@@ -1,6 +1,11 @@
 .PHONY: build test test-task1
 test: test-task1 test-task2 test-task4
 
+setup:
+	pip3 install turnt
+	pip3 install flit
+	cd bril/bril-txt && flit install --symlink --env
+
 build:
 	cargo build
 
