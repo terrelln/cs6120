@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::io::{self, Read, Write};
-use std::cmp::Ordering;
 use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::io::{self, Read, Write};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Program {
@@ -76,7 +76,7 @@ impl Instruction {
             labels: vec![label],
         }
     }
-    
+
     pub fn ret() -> Instruction {
         Instruction::Effect {
             op: EffectOps::Return,
@@ -123,6 +123,31 @@ impl Instruction {
             args: vec![size],
             funcs: Vec::new(),
             labels: Vec::new(),
+        }
+    }
+
+    pub fn is_terminator(&self) -> bool {
+        match self {
+            Instruction::Effect { op, .. } => match op {
+                EffectOps::Jump | EffectOps::Branch | EffectOps::Return => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_return(&self) -> bool {
+        match self {
+            Instruction::Effect { op: EffectOps::Return, .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn args(&self) -> &[String] {
+        match self {
+            Instruction::Constant { .. } => &[],
+            Instruction::Value { args, .. } => args,
+            Instruction::Effect { args, .. } => args,
         }
     }
 }
@@ -243,35 +268,6 @@ pub enum Literal {
     #[cfg(feature = "float")]
     Float(OrderedFloat<f64>),
 }
-
-// impl PartialEq for Literal {
-//     fn eq(&self, other: &Self) -> bool {
-//         match (self, other) {
-//             (Literal::Bool(x), Literal::Bool(y)) => x == y,
-//             (Literal::Int(x), Literal::Int(y)) => x == y,
-//             (Literal::Float(x), Literal::Float(y)) => {
-//                 if x.is_nan() && y.is_nan() {
-//                     true
-//                 } else {
-//                     x == y
-//                 }
-//             }
-//             _ => false,
-//         }
-//     }
-// }
-
-// impl Eq for Literal {}
-
-// impl Hash for Literal {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         match self {
-//             Literal::Bool(b) => {
-//                 0.hash(state);
-//             }
-//         }
-//     }
-// }
 
 pub fn load_program() -> Program {
     let mut buffer = String::new();

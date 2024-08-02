@@ -5,6 +5,7 @@ setup:
 	pip3 install turnt
 	pip3 install flit
 	cd bril/bril-txt && flit install --symlink --env
+	cd bril && deno install -g brili.ts
 
 build:
 	cargo build
