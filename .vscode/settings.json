@@ -1,0 +1,12 @@
+{
+	"cmake.generator": "Ninja",
+	"cmake.sourceDirectory": "${workspaceFolder}/bril-mlir/llvm-project/llvm",
+	"cmake.configureSettings": {
+		"LLVM_TARGETS_TO_BUILD": "host",
+		"LLVM_ENABLE_PROJECTS": "mlir",
+		"LLVM_EXTERNAL_PROJECTS": "bril-mlir",
+		"LLVM_EXTERNAL_BRIL_MLIR_SOURCE_DIR": "${workspaceFolder}/bril-mlir",
+	},
+	"cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+	"cmake.parallelJobs": 1
+}
